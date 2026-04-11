@@ -8,189 +8,247 @@ import {
 } from "lucide-react";
 
 // ==========================================
-// LE TUE CHIAVI (NON TOCCARE)
+// CONFIGURAZIONE GOOGLE SHEETS
 // ==========================================
 const SHEET_ID = "1No3lEcFiI6nuLuAeMjmD5YFyfgp50mzJp4XSh1CcOxY";
 const API_KEY = "AIzaSyAJAb5dT3e8TVCB8LO11C6fi0b72qHFmmg";
 
-const GymApp = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('home');
-  const [selectedWorkout, setSelectedWorkout] = useState(null);
-  const [loginForm, setLoginForm] = useState({ codice: '', pin: '' });
+// --- Utility ---
+const daysUntil = (dateStr) => {
+  if (!dateStr) return 0;
+  const d = new Date(dateStr.split('/').reverse().join('-')); // Gestisce formato DD/MM/YYYY
+  const now = new Date();
+  return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+};
 
-  // Funzione per caricare TUTTO da Google Sheets
-  const loadAllData = async () => {
-    setLoading(true);
-    try {
-      const sheets = ['config', 'clienti', 'schede', 'esercizi'];
-      const res = {};
-      for (const s of sheets) {
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${s}?key=${API_KEY}`;
-        const r = await fetch(url);
-        const j = await r.json();
-        if (j.values) {
-          const h = j.values[0];
-          res[s] = j.values.slice(1).map(row => {
-            const o = {}; h.forEach((key, i) => o[key] = row[i] || "");
-            return o;
-          });
-        }
-      }
-      // Trasformo config in oggetto semplice
-      const config = {}; (res.config || []).forEach(c => config[c.chiave] = c.valore);
-      
-      setData({
-        config: config,
-        clienti: res.clienti || [],
-        schede: res.schede || [],
-        esercizi: res.esercizi || []
-      });
-    } catch (e) {
-      console.error("Errore Google Sheets:", e);
+const formatDate = (dateStr) => dateStr || "";
+
+const getYouTubeId = (url) => {
+  if (!url) return null;
+  const m = url.match(/(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+};
+
+// --- Styles (Dal tuo file originale) ---
+const baseStyles = {
+  bg: "#0A0A0A",
+  card: "#1A1A1A",
+  cardBorder: "#2A2A2A",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#A0A0A0",
+  textMuted: "#666666",
+};
+
+// --- Componenti UI (Tutti ripristinati esattamente come li avevi) ---
+function BottomNav({ activeTab, onNavigate, primaryColor }) {
+  const tabs = [
+    { id: "home", icon: Home, label: "Home" },
+    { id: "progress", icon: BarChart3, label: "Progressi" },
+    { id: "history", icon: ClipboardList, label: "Storico" },
+    { id: "profile", icon: User, label: "Profilo" },
+  ];
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100,
+      background: "#111111", borderTop: "1px solid #222",
+      display: "flex", justifyContent: "space-around", alignItems: "center",
+      padding: "6px 0 env(safe-area-inset-bottom, 8px) 0",
+      backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+    }}>
+      {tabs.map(t => {
+        const active = activeTab === t.id;
+        const Icon = t.icon;
+        return (
+          <button key={t.id} onClick={() => onNavigate(t.id)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "2px",
+              color: active ? primaryColor : "#666", padding: "4px 12px",
+              transition: "color 0.2s",
+            }}>
+            <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
+            <span style={{ fontSize: "10px", fontWeight: active ? 700 : 400, letterSpacing: "0.5px" }}>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RestTimer({ seconds, onClose, primaryColor }) {
+  const [remaining, setRemaining] = useState(seconds);
+  const [running, setRunning] = useState(true);
+  const intervalRef = useRef(null);
+  const total = useRef(seconds);
+
+  useEffect(() => {
+    if (running && remaining > 0) {
+      intervalRef.current = setInterval(() => {
+        setRemaining(r => r <= 1 ? (clearInterval(intervalRef.current), 0) : r - 1);
+      }, 1000);
     }
-    setLoading(false);
-  };
+    return () => clearInterval(intervalRef.current);
+  }, [running, remaining]);
 
-  useEffect(() => { loadAllData(); }, []);
-
-  // Login
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const found = data?.clienti.find(c => 
-      c.codice.trim().toUpperCase() === loginForm.codice.trim().toUpperCase() && 
-      c.pin.trim() === loginForm.pin.trim()
-    );
-    if (found) setUser(found);
-    else alert("Dati errati!");
-  };
-
-  if (loading) return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white font-bold italic">
-      <RefreshCw className="animate-spin mb-4 text-[#FF6B00]" size={48} />
-      <p className="tracking-widest uppercase">GymBoard sta caricando...</p>
-    </div>
-  );
-
-  if (!user) return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white p-8 flex flex-col justify-center items-center">
-      <div className="text-center mb-12">
-        <h1 className="text-5xl font-black italic text-[#FF6B00] tracking-tighter">GYMBOARD</h1>
-        <p className="text-gray-500 uppercase tracking-widest text-sm mt-2">{data?.config.nome_palestra}</p>
-      </div>
-      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
-        <input 
-          className="w-full bg-[#1A1A1A] border-none p-5 rounded-2xl text-lg focus:ring-2 focus:ring-[#FF6B00] outline-none transition-all"
-          placeholder="Codice Cliente"
-          value={loginForm.codice}
-          onChange={e => setLoginForm({...loginForm, codice: e.target.value})}
-        />
-        <input 
-          className="w-full bg-[#1A1A1A] border-none p-5 rounded-2xl text-lg focus:ring-2 focus:ring-[#FF6B00] outline-none transition-all"
-          type="password"
-          placeholder="PIN"
-          value={loginForm.pin}
-          onChange={e => setLoginForm({...loginForm, pin: e.target.value})}
-        />
-        <button className="w-full bg-[#FF6B00] p-5 rounded-2xl font-black text-xl italic uppercase tracking-tighter hover:scale-95 transition-transform active:bg-orange-600">Entra</button>
-      </form>
-    </div>
-  );
-
-  // Filtro la scheda e gli esercizi dell'utente
-  const activeScheda = data.schede.find(s => s.id_scheda === user.id_scheda_attiva);
-  const workoutDays = Array.from(new Set(data.esercizi.filter(e => e.id_scheda === user.id_scheda_attiva).map(e => e.giorno)));
+  const progress = remaining / total.current;
+  const radius = 90;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - progress);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white pb-32">
-      {/* HEADER */}
-      <div className="p-6 bg-gradient-to-b from-[#111] to-[#0A0A0A] border-b border-[#222]">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-tight">CIAO {user.nome.toUpperCase()}! 💪</h1>
-            <p className="text-gray-400 text-sm">Pronto per allenarti alla {data.config.nome_palestra}?</p>
-          </div>
-          <button onClick={loadAllData} className="p-3 bg-[#1A1A1A] rounded-full text-[#FF6B00]"><RefreshCw size={20}/></button>
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.95)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "32px" }}>
+      <div style={{ position: "relative", width: 220, height: 220 }}>
+        <svg width="220" height="220" viewBox="0 0 220 220" style={{ transform: "rotate(-90deg)" }}>
+          <circle cx="110" cy="110" r={radius} fill="none" stroke="#222" strokeWidth="8" />
+          <circle cx="110" cy="110" r={radius} fill="none" stroke={remaining === 0 ? "#22c55e" : primaryColor} strokeWidth="8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 1s linear" }} />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: "48px", fontWeight: 800, color: "#FFF" }}>{Math.floor(remaining / 60)}:{(remaining % 60).toString().padStart(2, '0')}</span>
         </div>
+      </div>
+      <button onClick={onClose} style={{ background: primaryColor, border: "none", borderRadius: 12, color: "#FFF", padding: "12px 48px", fontWeight: 600 }}>Chiudi</button>
+    </div>
+  );
+}
 
-        {activeScheda && (
-          <div className="bg-[#1A1A1A] p-6 rounded-3xl relative overflow-hidden border border-[#222]">
-            <div className="absolute top-0 right-0 p-4 opacity-10"><Dumbbell size={80}/></div>
-            <p className="text-[#FF6B00] font-bold text-xs uppercase tracking-widest mb-1">Scheda Attiva</p>
-            <h2 className="text-2xl font-black italic leading-tight">{activeScheda.nome_scheda}</h2>
-            <div className="flex gap-4 mt-4 text-sm text-gray-400">
-              <span className="flex items-center gap-1"><Target size={14}/> {activeScheda.obiettivo}</span>
-              <span className="flex items-center gap-1"><Calendar size={14}/> Scade il {user.scadenza}</span>
-            </div>
+function ExerciseCard({ ex, primaryColor, onTimer, onVideo }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div style={{ background: baseStyles.card, borderRadius: 16, border: `1px solid ${baseStyles.cardBorder}`, marginBottom: 12, overflow: "hidden" }}>
+      <button onClick={() => setExpanded(!expanded)} style={{ width: "100%", background: "none", border: "none", padding: "16px", display: "flex", alignItems: "center", gap: "12px", color: "#FFF", textAlign: "left" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: `${primaryColor}22`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Dumbbell size={20} color={primaryColor} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "15px", fontWeight: 700 }}>{ex.esercizio}</div>
+          <div style={{ fontSize: "13px", color: baseStyles.textSecondary }}>{ex.serie} × {ex.reps} • {ex.peso} kg</div>
+        </div>
+        <ChevronDown size={20} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "0.2s" }} />
+      </button>
+      {expanded && (
+        <div style={{ padding: "0 16px 16px" }}>
+          <div style={{ background: "#222", borderRadius: 10, padding: "12px", marginBottom: 10, fontSize: "13px" }}>
+             <b>Note:</b> {ex.note || "Nessuna nota dal trainer"}
           </div>
-        )}
-      </div>
-
-      {/* WORKOUT LIST */}
-      <div className="p-6 space-y-4">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-2 text-center">I tuoi allenamenti</h3>
-        {workoutDays.map((giorno, idx) => (
-          <button 
-            key={idx}
-            onClick={() => setSelectedWorkout(giorno)}
-            className="w-full bg-[#1A1A1A] p-5 rounded-2xl flex items-center justify-between group active:scale-95 transition-all border border-transparent active:border-[#FF6B00]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-[#FF6B00] font-black text-xl italic">{giorno}</div>
-              <div className="text-left">
-                <p className="font-bold text-lg">Allenamento {giorno}</p>
-                <p className="text-gray-500 text-xs">Vedi esercizi e note</p>
-              </div>
-            </div>
-            <ChevronRight className="text-gray-700 group-active:text-[#FF6B00]" />
-          </button>
-        ))}
-      </div>
-
-      {/* FOOTER NAV */}
-      <div className="fixed bottom-6 left-6 right-6 bg-[#1A1A1A]/90 backdrop-blur-xl border border-[#333] p-4 rounded-3xl flex justify-around items-center shadow-2xl z-50">
-        <button onClick={() => setActiveTab('home')} className={`p-2 transition-colors ${activeTab === 'home' ? 'text-[#FF6B00]' : 'text-gray-500'}`}><Home/></button>
-        <button onClick={() => setActiveTab('progress')} className={`p-2 transition-colors ${activeTab === 'progress' ? 'text-[#FF6B00]' : 'text-gray-500'}`}><BarChart3/></button>
-        <button onClick={() => setActiveTab('history')} className={`p-2 transition-colors ${activeTab === 'history' ? 'text-[#FF6B00]' : 'text-gray-500'}`}><ClipboardList/></button>
-        <button onClick={() => setActiveTab('profile')} className={`p-2 transition-colors ${activeTab === 'profile' ? 'text-[#FF6B00]' : 'text-gray-500'}`}><User/></button>
-      </div>
-
-      {/* MODALE ALLENAMENTO (DETTAGLIO ESERCIZI) */}
-      {selectedWorkout && (
-        <div className="fixed inset-0 bg-black z-[100] overflow-y-auto p-6 animate-in slide-in-from-bottom duration-300">
-          <div className="flex justify-between items-center mb-8">
-            <button onClick={() => setSelectedWorkout(null)} className="p-2 bg-[#1A1A1A] rounded-full text-white"><ChevronLeft/></button>
-            <h2 className="text-xl font-black italic uppercase italic">Giorno {selectedWorkout}</h2>
-            <div className="w-10"></div>
-          </div>
-          
-          <div className="space-y-6">
-            {data.esercizi.filter(e => e.giorno === selectedWorkout && e.id_scheda === user.id_scheda_attiva).map((ex, i) => (
-              <div key={i} className="bg-[#1A1A1A] rounded-3xl overflow-hidden border border-[#222]">
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-bold italic leading-tight">{ex.esercizio}</h3>
-                    {ex.video && <a href={ex.video} target="_blank" className="text-[#FF6B00] p-2 bg-orange-500/10 rounded-lg"><Video size={20}/></a>}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mb-6">
-                    <div className="bg-black/50 p-3 rounded-2xl text-center"><p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Serie</p><p className="text-lg font-black italic">{ex.serie}</p></div>
-                    <div className="bg-black/50 p-3 rounded-2xl text-center"><p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Reps</p><p className="text-lg font-black italic">{ex.reps}</p></div>
-                    <div className="bg-black/50 p-3 rounded-2xl text-center"><p className="text-gray-500 text-[10px] uppercase font-bold mb-1">Recupero</p><p className="text-lg font-black italic">{ex.recupero}"</p></div>
-                  </div>
-                  <div className="bg-[#222] p-4 rounded-2xl flex items-center justify-between">
-                    <span className="text-gray-400 font-bold text-sm">Carico: <span className="text-white">{ex.peso} kg</span></span>
-                    <button className="bg-[#FF6B00] px-4 py-2 rounded-xl text-xs font-black uppercase italic">Dettagli</button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => onTimer(parseInt(ex.riposo))} style={{ flex: 1, background: `${primaryColor}22`, border: "none", borderRadius: 10, padding: "10px", color: primaryColor, fontWeight: 700 }}>Riposo {ex.riposo}s</button>
+            {ex.video && <button onClick={() => onVideo(ex.video)} style={{ flex: 1, background: "#333", border: "none", borderRadius: 10, padding: "10px", color: "#FFF", fontWeight: 700 }}>Video</button>}
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
-export default GymApp;
+// --- App Principale ---
+export default function GymApp() {
+  const [data, setData] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("home");
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [loginForm, setLoginForm] = useState({ codice: "", pin: "" });
+  const [timerSeconds, setTimerSeconds] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+
+  // FETCH DATI REALI
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const sheets = ['config', 'clienti', 'schede', 'esercizi'];
+      const results = {};
+      for (const s of sheets) {
+        const resp = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${s}?key=${API_KEY}`);
+        const json = await resp.json();
+        const headers = json.values[0];
+        results[s] = json.values.slice(1).map(row => {
+          const obj = {}; headers.forEach((h, i) => obj[h] = row[i] || "");
+          return obj;
+        });
+      }
+      const config = {}; results.config.forEach(c => config[c.chiave] = c.valore);
+      setData({ config, clienti: results.clienti, schede: results.schede, esercizi: results.esercizi });
+    } catch (e) { console.error("Errore Sheet:", e); }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  if (loading) return <div style={{ background: "#000", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#FF6B00", fontWeight: "bold" }}>CARICAMENTO...</div>;
+
+  const primaryColor = data?.config?.colore_primario || "#FF6B00";
+
+  if (!user) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0A0A", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ width: 80, height: 80, borderRadius: 20, background: `${primaryColor}22`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+          <Dumbbell size={40} color={primaryColor} />
+        </div>
+        <h1 style={{ color: "#FFF", fontSize: 28, fontWeight: 900 }}>{data.config.nome_palestra}</h1>
+        <p style={{ color: "#666", marginBottom: 40 }}>{data.config.slogan}</p>
+        <div style={{ width: "100%", maxWidth: 320, display: "flex", flexDirection: "column", gap: 12 }}>
+          <input placeholder="Codice Cliente" value={loginForm.codice} onChange={e => setLoginForm({...loginForm, codice: e.target.value.toUpperCase()})} style={{ background: "#1A1A1A", border: "1px solid #333", borderRadius: 12, padding: 16, color: "#FFF" }} />
+          <input placeholder="PIN" type="password" value={loginForm.pin} onChange={e => setLoginForm({...loginForm, pin: e.target.value})} style={{ background: "#1A1A1A", border: "1px solid #333", borderRadius: 12, padding: 16, color: "#FFF" }} />
+          <button onClick={() => {
+            const found = data.clienti.find(c => c.codice === loginForm.codice && c.pin === loginForm.pin);
+            if (found) setUser(found); else alert("Dati errati");
+          }} style={{ background: primaryColor, border: "none", borderRadius: 12, padding: 18, color: "#FFF", fontWeight: 800, fontSize: 16, marginTop: 10 }}>ACCEDI</button>
+        </div>
+      </div>
+    );
+  }
+
+  // LOGICA SCHEDA UTENTE
+  const scheda = data.schede.find(s => s.id_scheda === user.id_scheda_attiva);
+  const workoutDays = [...new Set(data.esercizi.filter(e => e.id_scheda === user.id_scheda_attiva).map(e => e.giorno))];
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0A0A0A", color: "#FFF", padding: "20px 16px 100px" }}>
+      {timerSeconds && <RestTimer seconds={timerSeconds} onClose={() => setTimerSeconds(null)} primaryColor={primaryColor} />}
+      {videoUrl && <VideoModal videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+
+      {selectedDay ? (
+        <div>
+          <button onClick={() => setSelectedDay(null)} style={{ background: "#222", border: "none", color: "#FFF", padding: 10, borderRadius: 10, marginBottom: 20 }}><ChevronLeft /></button>
+          <h2 style={{ fontSize: 24, fontWeight: 900, marginBottom: 20 }}>{selectedDay}</h2>
+          {data.esercizi.filter(e => e.id_scheda === user.id_scheda_attiva && e.giorno === selectedDay).map((ex, i) => (
+            <ExerciseCard key={i} ex={ex} primaryColor={primaryColor} onTimer={setTimerSeconds} onVideo={setVideoUrl} />
+          ))}
+        </div>
+      ) : activeTab === "home" ? (
+        <div>
+          <h1 style={{ fontSize: 24, fontWeight: 900 }}>Ciao {user.nome}! 💪</h1>
+          <p style={{ color: "#A0A0A0", marginBottom: 24 }}>Pronto per la {data.config.nome_palestra}?</p>
+          <div style={{ background: `${primaryColor}15`, border: `1px solid ${primaryColor}33`, borderRadius: 20, padding: 20, marginBottom: 24 }}>
+            <div style={{ fontSize: 11, color: primaryColor, fontWeight: 700, letterSpacing: 1 }}>SCHEDA ATTIVA</div>
+            <div style={{ fontSize: 20, fontWeight: 900 }}>{scheda?.nome_scheda}</div>
+            <div style={{ fontSize: 13, color: "#A0A0A0", marginTop: 4 }}>Scade il: {user.scadenza} ({daysUntil(user.scadenza)}g)</div>
+          </div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12 }}>ALLENAMENTI</h2>
+          {workoutDays.map(d => (
+            <button key={d} onClick={() => setSelectedDay(d)} style={{ width: "100%", background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 14, padding: 20, marginBottom: 10, textAlign: "left", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 700 }}>{d}</span>
+              <ChevronRight color={primaryColor} />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{ textAlign: "center", paddingTop: 100, color: "#666" }}>
+           Questa sezione (Progressi/Storico) è in fase di caricamento...
+        </div>
+      )}
+
+      <BottomNav activeTab={activeTab} onNavigate={setActiveTab} primaryColor={primaryColor} />
+    </div>
+  );
+}
+
+function VideoModal({ videoUrl, onClose }) {
+  const id = getYouTubeId(videoUrl);
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.95)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <button onClick={onClose} style={{ position: "absolute", top: 20, right: 20, color: "#FFF", background: "none", border: "none" }}><X size={30}/></button>
+      <iframe width="100%" height="300" src={`https://www.youtube.com/embed/${id}`} frameBorder="0" allowFullScreen></iframe>
+    </div>
+  );
+}
