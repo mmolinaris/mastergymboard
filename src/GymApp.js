@@ -519,4 +519,125 @@ function ProfileScreen({ cliente, config, styles, onLogout }) {
           {[["Email", cliente.email], ["Telefono", cliente.telefono], ["Iscritto dal", formatDate(cliente.data_iscrizione)]].map(([k, v]) => (
             <div key={k} style={{ display: "flex", justifyContent: "space-between" }}>
               <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{k}</span>
-              <span style={{ color: "#FFF", fontSize: "13px" }}>{v}</spa
+              <span style={{ color: "#FFF", fontSize: "13px" }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background: styles.card, borderRadius: 16, padding: "20px", marginBottom: 16, border: `1px solid ${styles.cardBorder}` }}>
+        <div style={{ fontSize: "12px", color: styles.primary, fontWeight: 700, letterSpacing: "1.5px", marginBottom: 16 }}>LA TUA PALESTRA</div>
+        <div style={{ fontSize: "18px", fontWeight: 800, color: "#FFF", marginBottom: 12 }}>{config.nome_palestra}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          {config.indirizzo && <div style={{ display: "flex", alignItems: "center", gap: 10 }}><MapPin size={16} color={styles.textSecondary} /><span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.indirizzo}</span></div>}
+          {config.telefono && <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Phone size={16} color={styles.textSecondary} /><span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.telefono}</span></div>}
+          {config.instagram && <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Instagram size={16} color={styles.textSecondary} /><span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.instagram}</span></div>}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {config.telefono && <a href={`tel:${config.telefono}`} style={{ flex: 1, background: `${styles.primary}22`, border: `1px solid ${styles.primary}44`, borderRadius: 10, padding: "12px", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: styles.primary, fontWeight: 700, fontSize: "13px" }}><Phone size={16} /> Chiama</a>}
+          {config.instagram && <a href={`https://instagram.com/${config.instagram.replace("@", "")}`} target="_blank" rel="noreferrer" style={{ flex: 1, background: "#222", border: `1px solid ${styles.cardBorder}`, borderRadius: 10, padding: "12px", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#FFF", fontWeight: 700, fontSize: "13px" }}><Instagram size={16} /> Instagram</a>}
+        </div>
+      </div>
+      <button onClick={onLogout} style={{ width: "100%", background: "#1C1111", border: "1px solid #3A1111", borderRadius: 12, padding: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "#ef4444", fontWeight: 700, fontSize: "14px" }}>
+        <LogOut size={16} /> Esci
+      </button>
+    </div>
+  );
+}
+
+export default function GymApp() {
+  const [appData, setAppData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [currentCliente, setCurrentCliente] = useState(null);
+  const [activeTab, setActiveTab] = useState("home");
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [lastSync, setLastSync] = useState(null);
+  const [timerSeconds, setTimerSeconds] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [progressData, setProgressData] = useState({});
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const data = await fetchAllData();
+      setAppData(data);
+      setLastSync(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
+    } catch (err) {
+      setFetchError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const styles = useMemo(() => getStyles(appData?.config?.colore_primario, appData?.config?.colore_sfondo), [appData]);
+  const primaryColor = styles.primary;
+
+  const currentScheda = useMemo(() => {
+    if (!currentCliente || !appData) return null;
+    return appData.schede.find(s => s.scheda_id === currentCliente.scheda_attiva);
+  }, [currentCliente, appData]);
+
+  const dayExercises = useMemo(() => {
+    if (!selectedDay || !currentCliente || !appData) return [];
+    return appData.esercizi.filter(e => e.scheda_id === currentCliente.scheda_attiva && e.giorno === selectedDay);
+  }, [selectedDay, currentCliente, appData]);
+
+  const handleLogin = useCallback((code, pin) => {
+    if (!appData) return;
+    const cliente = appData.clienti.find(c => c.codice === code);
+    if (!cliente) { setLoginError("Codice cliente non trovato"); return; }
+    if (cliente.pin && cliente.pin !== pin) { setLoginError("PIN non corretto"); return; }
+    setCurrentCliente(cliente);
+    setLoggedIn(true);
+    setLoginError("");
+  }, [appData]);
+
+  const handleLogout = useCallback(() => {
+    setLoggedIn(false);
+    setCurrentCliente(null);
+    setActiveTab("home");
+    setSelectedDay(null);
+  }, []);
+
+  const handleLogWeight = useCallback((exercise, schedaId, weight) => {
+    const key = `${exercise}__${schedaId}`;
+    const date = new Date().toLocaleDateString("it-IT");
+    setProgressData(prev => ({ ...prev, [key]: [...(prev[key] || []), { date, weight }] }));
+  }, []);
+
+  if (loading) return <LoadingScreen primary="#FF6B00" />;
+  if (fetchError) return <ErrorScreen error={fetchError} onRetry={loadData} />;
+  if (!loggedIn) return <LoginScreen config={appData.config} styles={styles} onLogin={handleLogin} error={loginError} />;
+
+  return (
+    <div style={{ maxWidth: 480, margin: "0 auto", position: "relative", background: styles.bg, minHeight: "100vh" }}>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        input::placeholder { color: #555; }
+        ::-webkit-scrollbar { width: 0; }
+      `}</style>
+      {timerSeconds !== null && <RestTimer seconds={timerSeconds} onClose={() => setTimerSeconds(null)} primaryColor={primaryColor} />}
+      {videoUrl && <VideoModal videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
+      <div style={{ animation: "fadeIn 0.3s ease" }}>
+        {selectedDay ? (
+          <WorkoutDay giorno={selectedDay} esercizi={dayExercises} styles={styles} onBack={() => setSelectedDay(null)} onTimer={s => setTimerSeconds(s)} onVideo={v => setVideoUrl(v)} progressData={progressData} onLogWeight={handleLogWeight} />
+        ) : activeTab === "home" && currentScheda ? (
+          <Dashboard cliente={currentCliente} scheda={currentScheda} esercizi={appData.esercizi} styles={styles} onSelectDay={day => setSelectedDay(day)} onSync={loadData} lastSync={lastSync} />
+        ) : activeTab === "progress" ? (
+          <ProgressTracker progressData={progressData} styles={styles} esercizi={appData.esercizi} schedaAttiva={currentCliente.scheda_attiva} />
+        ) : activeTab === "history" ? (
+          <WorkoutHistory cliente={currentCliente} schede={appData.schede} esercizi={appData.esercizi} styles={styles} />
+        ) : activeTab === "profile" ? (
+          <ProfileScreen cliente={currentCliente} config={appData.config} styles={styles} onLogout={handleLogout} />
+        ) : null}
+      </div>
+      {!selectedDay && <BottomNav activeTab={activeTab} onNavigate={tab => { setActiveTab(tab); setSelectedDay(null); }} primaryColor={primaryColor} />}
+    </div>
+  );
+}
