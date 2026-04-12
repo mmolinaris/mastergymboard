@@ -1000,7 +1000,7 @@ export default function GymApp() {
     );
   }, [selectedDay, currentCliente, appData]);
 
-  /* LOGIN — codice + PIN */
+  /* LOGIN — codice + PIN, salva credenziali per accesso automatico */
   const handleLogin = useCallback((code, pin) => {
     if (!appData) return;
     const cliente = appData.clienti.find(c => c.codice === code);
@@ -1015,13 +1015,33 @@ export default function GymApp() {
     setCurrentCliente(cliente);
     setLoggedIn(true);
     setLoginError("");
+    /* Salva credenziali per la prossima volta */
+    try { localStorage.setItem("gymboard_code", code); localStorage.setItem("gymboard_pin", pin); } catch(e) {}
   }, [appData]);
+
+  /* AUTO-LOGIN — quando i dati sono caricati, prova il login automatico */
+  useEffect(() => {
+    if (!appData || loggedIn) return;
+    try {
+      const savedCode = localStorage.getItem("gymboard_code");
+      const savedPin = localStorage.getItem("gymboard_pin");
+      if (savedCode) {
+        const cliente = appData.clienti.find(c => c.codice === savedCode);
+        if (cliente && (!cliente.pin || cliente.pin === savedPin)) {
+          setCurrentCliente(cliente);
+          setLoggedIn(true);
+        }
+      }
+    } catch(e) {}
+  }, [appData, loggedIn]);
 
   const handleLogout = useCallback(() => {
     setLoggedIn(false);
     setCurrentCliente(null);
     setActiveTab("home");
     setSelectedDay(null);
+    /* Cancella credenziali salvate */
+    try { localStorage.removeItem("gymboard_code"); localStorage.removeItem("gymboard_pin"); } catch(e) {}
   }, []);
 
   const handleLogWeight = useCallback((exercise, schedaId, weight) => {
