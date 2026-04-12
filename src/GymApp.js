@@ -382,15 +382,14 @@ function ErrorScreen({ error, onRetry }) {
 }
 
 /* ─────────────────────────────────────────────
-   LOGIN SEMPLIFICATO
-   Solo codice cliente (es. MG-001), niente PIN!
+   LOGIN — Codice cliente + PIN
    ───────────────────────────────────────────── */
 function LoginScreen({ config, styles, onLogin, error }) {
   const [code, setCode] = useState("");
-  const hasLogo = config.logo_url && config.logo_url.trim() !== "" && config.logo_url !== "https://link-al-logo.png";
+  const [pin, setPin] = useState("");
 
   const handleSubmit = () => {
-    if (code.trim()) onLogin(code.trim().toUpperCase());
+    if (code.trim() && pin.trim()) onLogin(code.trim().toUpperCase(), pin.trim());
   };
 
   const handleKeyDown = (e) => {
@@ -403,14 +402,15 @@ function LoginScreen({ config, styles, onLogin, error }) {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "32px 24px"
     }}>
-      {/* LOGO */}
+      {/* LOGO — prende logo_url dal foglio config, altrimenti mostra icona */}
       <div style={{
         width: 120, height: 120, marginBottom: 20,
         display: "flex", alignItems: "center", justifyContent: "center"
       }}>
-        {hasLogo ? (
+        {config.logo_url && config.logo_url.startsWith("http") ? (
           <img src={config.logo_url} alt="logo"
-            style={{ width: 120, height: 120, objectFit: "contain", borderRadius: "50%" }} />
+            style={{ width: 120, height: 120, objectFit: "contain", borderRadius: "50%" }}
+            onError={(e) => { e.target.style.display = "none"; }} />
         ) : (
           <div style={{
             width: 120, height: 120, borderRadius: "50%",
@@ -435,21 +435,38 @@ function LoginScreen({ config, styles, onLogin, error }) {
       <div style={{ width: "100%", maxWidth: 320 }}>
         <label style={{
           display: "block", fontSize: "12px", color: styles.textSecondary,
-          marginBottom: 8, fontWeight: 600, letterSpacing: "1px", textAlign: "center"
-        }}>INSERISCI IL TUO CODICE</label>
-
+          marginBottom: 6, fontWeight: 600, letterSpacing: "1px"
+        }}>CODICE CLIENTE</label>
         <input
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
-          onKeyDown={handleKeyDown}
           placeholder="es. MG-001"
           autoComplete="off"
           autoCapitalize="characters"
           style={{
-            width: "100%", background: styles.card, border: `2px solid ${styles.cardBorder}`,
-            borderRadius: 14, padding: "16px 20px", color: "#FFF",
-            fontSize: "22px", fontWeight: 800, outline: "none", marginBottom: 12,
-            boxSizing: "border-box", letterSpacing: "2px", textAlign: "center"
+            width: "100%", background: styles.card, border: `1px solid ${styles.cardBorder}`,
+            borderRadius: 12, padding: "14px 16px", color: "#FFF",
+            fontSize: "16px", fontWeight: 700, outline: "none", marginBottom: 16,
+            boxSizing: "border-box", letterSpacing: "1px"
+          }}
+        />
+
+        <label style={{
+          display: "block", fontSize: "12px", color: styles.textSecondary,
+          marginBottom: 6, fontWeight: 600, letterSpacing: "1px"
+        }}>PIN</label>
+        <input
+          value={pin}
+          onChange={e => setPin(e.target.value.slice(0, 4))}
+          onKeyDown={handleKeyDown}
+          placeholder="• • • •"
+          type="password"
+          inputMode="numeric"
+          style={{
+            width: "100%", background: styles.card, border: `1px solid ${styles.cardBorder}`,
+            borderRadius: 12, padding: "14px 16px", color: "#FFF",
+            fontSize: "20px", fontWeight: 700, outline: "none", marginBottom: 8,
+            boxSizing: "border-box", letterSpacing: "8px", textAlign: "center"
           }}
         />
 
@@ -458,21 +475,13 @@ function LoginScreen({ config, styles, onLogin, error }) {
         )}
 
         <button onClick={handleSubmit} style={{
-          width: "100%", background: styles.primary, border: "none", borderRadius: 14,
+          width: "100%", background: styles.primary, border: "none", borderRadius: 12,
           padding: "16px", color: "#FFF", fontSize: "16px", fontWeight: 800,
-          cursor: "pointer", marginTop: 8, textTransform: "uppercase",
-          opacity: code.trim() ? 1 : 0.5
+          cursor: "pointer", marginTop: 16, textTransform: "uppercase",
+          opacity: (code.trim() && pin.trim()) ? 1 : 0.5
         }}>
           Accedi
         </button>
-
-        <p style={{
-          color: styles.textMuted, fontSize: "12px", textAlign: "center",
-          marginTop: 16, lineHeight: 1.5
-        }}>
-          Il codice ti è stato dato dalla palestra.<br />
-          Se non lo ricordi, chiedi al tuo trainer.
-        </p>
       </div>
     </div>
   );
@@ -991,12 +1000,16 @@ export default function GymApp() {
     );
   }, [selectedDay, currentCliente, appData]);
 
-  /* LOGIN SEMPLIFICATO — solo codice, niente PIN */
-  const handleLogin = useCallback((code) => {
+  /* LOGIN — codice + PIN */
+  const handleLogin = useCallback((code, pin) => {
     if (!appData) return;
     const cliente = appData.clienti.find(c => c.codice === code);
     if (!cliente) {
-      setLoginError("Codice non trovato. Controlla e riprova.");
+      setLoginError("Codice cliente non trovato");
+      return;
+    }
+    if (cliente.pin && cliente.pin !== pin) {
+      setLoginError("PIN non corretto");
       return;
     }
     setCurrentCliente(cliente);
