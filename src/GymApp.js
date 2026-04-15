@@ -156,7 +156,7 @@ function LoginScreen({config,s,onLogin,error}){
   return(
     <div style={{minHeight:"100vh",background:"#FFFFFF",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px"}}>
       <div style={{width:120,height:120,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        {hasLogo?<img src={config.logo_url} alt="" style={{width:120,height:120,objectFit:"contain",borderRadius:"50%"}} onError={e=>{e.target.style.display="none"}}/>:<div style={{width:120,height:120,borderRadius:"50%",background:`${s.primary}15`,border:`2px solid ${s.primary}33`,display:"flex",alignItems:"center",justifyContent:"center"}}><Dumbbell size={56} color={s.primary}/></div>}
+        {hasLogo?<img src={config.logo_url} alt="" style={{width:120,height:120,objectFit:"contain",borderRadius:"50%"}} onError={e=>{e.target.style.display="none"}}/>:<div style={{width:120,height:120,borderRadius:"50%",background:`${s.primary}15`,border:`2px solid ${s.primary}33`,display:"flex",alignItems:"center",justifyContent:"center"}}><img src="https://raw.githubusercontent.com/mmolinaris/mastergymboard/main/public/icon-512.png" alt="Logo" style={{width:120,height:120,objectFit:"cover",borderRadius:"50%"}}/>}
       </div>
       <h1 style={{color:s.text,fontSize:28,fontWeight:900,marginBottom:4,textAlign:"center"}}>{config.nome_palestra||"Gym App"}</h1>
       {config.slogan&&<p style={{color:s.sub,fontSize:14,marginBottom:40,fontStyle:"italic",textAlign:"center"}}>{config.slogan}</p>}
