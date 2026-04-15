@@ -209,7 +209,7 @@ function WorkoutDay({seduta,esercizi,s,onBack,onTimer,onVideo,progressData,onLog
   const tipo=esercizi[0]?.tipo_seduta||"";
   return(
     <div style={{padding:"0 16px 100px",minHeight:"100vh",background:s.bg}}>
-      <div style={{position:"sticky",top:0,zIndex:50,background:s.bg,padding:"16px 0 12px",display:"flex",alignItems:"center",gap:12,borderBottom:`1px solid ${s.border}`}}>
+      <div style={{position:"sticky",top:0,zIndex:50,background:s.bg,padding:"30px 0 12px",display:"flex",alignItems:"center",gap:12,borderBottom:`1px solid ${s.border}`}}>
         <button onClick={onBack} style={{background:s.card,border:`1px solid ${s.border}`,borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><ChevronLeft size={20} color={s.text}/></button>
         <div style={{flex:1}}><h1 style={{color:s.text,fontSize:18,fontWeight:800,margin:0,display:"flex",alignItems:"center",gap:8}}>{seduta}{tipo&&<span style={{background:`${s.primary}15`,color:s.primary,fontSize:10,fontWeight:800,padding:"2px 8px",borderRadius:4}}>{tipo}</span>}</h1><p style={{color:s.sub,fontSize:12,margin:0}}>{esercizi.length} esercizi</p></div>
       </div>
