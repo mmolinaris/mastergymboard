@@ -274,10 +274,10 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
   const fbUrl = config.facebook ? (config.facebook.startsWith("http") ? config.facebook : `https://facebook.com/${config.facebook}`) : null;
   const igUrl = config.instagram ? `https://instagram.com/${config.instagram.replace("@","")}` : null;
   const orari = [
-    ["Lunedì - Venerdì", config.orari_lun_ven],
-    ["Sabato", config.orari_sab],
-    ["Domenica", config.orari_dom],
-  ].filter(([,v])=>v);
+    ["Lunedì - Venerdì", config.orari_lun_ven || config.orari1 || "09:00 - 21:30"],
+    ["Sabato", config.orari_sab || config.orari2 || "15:30 - 18:30"],
+    ["Domenica", config.orari_dom || config.orari3 || "Chiuso"],
+  ];
   return(
     <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
       <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:24}}>Profilo ⚙️</h1>
