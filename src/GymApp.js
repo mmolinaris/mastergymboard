@@ -20,6 +20,8 @@ async function fetchSheet(tab) {
 
 async function fetchAllData() {
   const [cf, cl, sc, ex] = await Promise.all(["config","clienti","schede","esercizi"].map(fetchSheet));
+  let servizi = [];
+  try { servizi = await fetchSheet("servizi"); } catch(e) {}
   const esercizi = ex.map(e => ({
     ...e,
     seduta: e.seduta || e.giorno || "",
@@ -38,7 +40,8 @@ async function fetchAllData() {
     config: Object.fromEntries(cf.map(r => [r.chiave, r.valore])),
     clienti: cl,
     schede: sc,
-    esercizi
+    esercizi,
+    servizi
   };
 }
 
@@ -264,26 +267,81 @@ function HistoryView({cliente,schede,esercizi,s}){
     </div>);
 }
 
-function ProfileView({cliente,config,s,onLogout}){
+function ProfileView({cliente,config,s,onLogout,servizi}){
+  const corsi = (servizi||[]).filter(sv=>sv.tipo==="corso");
+  const professionisti = (servizi||[]).filter(sv=>sv.tipo==="professionista");
+  const waNum = (config.whatsapp||"").replace(/\D/g,"");
+  const fbUrl = config.facebook ? (config.facebook.startsWith("http") ? config.facebook : `https://facebook.com/${config.facebook}`) : null;
+  const igUrl = config.instagram ? `https://instagram.com/${config.instagram.replace("@","")}` : null;
+  const orari = [
+    ["Lunedì - Venerdì", config.orari_lun_ven],
+    ["Sabato", config.orari_sab],
+    ["Domenica", config.orari_dom],
+  ].filter(([,v])=>v);
   return(
     <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
       <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:24}}>Profilo ⚙️</h1>
+
+      {/* DATI CLIENTE */}
       <div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
           <div style={{width:56,height:56,borderRadius:16,background:`${s.primary}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><User size={28} color={s.primary}/></div>
           <div><div style={{fontSize:20,fontWeight:900,color:s.text}}>{cliente.nome} {cliente.cognome}</div><div style={{fontSize:13,color:s.sub}}>Codice: {cliente.codice}</div></div>
         </div>
-        {[["Email",cliente.email],["Telefono",cliente.telefono],["Iscritto dal",fmtDate(cliente.data_iscrizione)]].filter(([,v])=>v).map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",marginBottom:6}}><span style={{color:s.sub,fontSize:13}}>{k}</span><span style={{color:s.text,fontSize:13}}>{v}</span></div>)}
+        {[["Email",cliente.email],["Telefono",cliente.telefono],["Iscritto dal",fmtDate(cliente.data_iscrizione)]].filter(([,v])=>v).map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${s.border}`}}><span style={{color:s.sub,fontSize:13}}>{k}</span><span style={{color:s.text,fontSize:13,fontWeight:600}}>{v}</span></div>)}
       </div>
+
+      {/* LA TUA PALESTRA */}
       <div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
-        <div style={{fontSize:12,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:16}}>LA TUA PALESTRA</div>
+        <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>LA TUA PALESTRA</div>
         <div style={{fontSize:18,fontWeight:800,color:s.text,marginBottom:12}}>{config.nome_palestra}</div>
-        {[[MapPin,config.indirizzo],[Phone,config.telefono],[Instagram,config.instagram]].filter(([,v])=>v).map(([I,v],i)=><div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><I size={16} color={s.sub}/><span style={{color:s.sub,fontSize:13}}>{v}</span></div>)}
-        <div style={{display:"flex",gap:8,marginTop:12}}>
-          {config.telefono&&<a href={`tel:${config.telefono}`} style={{flex:1,background:`${s.primary}15`,border:`1px solid ${s.primary}33`,borderRadius:10,padding:12,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.primary,fontWeight:700,fontSize:13}}><Phone size={16}/> Chiama</a>}
-          {config.instagram&&<a href={`https://instagram.com/${config.instagram.replace("@","")}`} target="_blank" rel="noreferrer" style={{flex:1,background:"#EBEBEB",border:`1px solid ${s.border}`,borderRadius:10,padding:12,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.text,fontWeight:700,fontSize:13}}><Instagram size={16}/> Instagram</a>}
+        {config.indirizzo&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><MapPin size={15} color={s.sub}/><span style={{color:s.sub,fontSize:13}}>{config.indirizzo}</span></div>}
+        {config.telefono&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><Phone size={15} color={s.sub}/><span style={{color:s.sub,fontSize:13}}>{config.telefono}</span></div>}
+
+        {/* TASTI SOCIAL */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {config.telefono&&<a href={`tel:${config.telefono}`} style={{flex:1,minWidth:"45%",background:`${s.primary}15`,border:`1px solid ${s.primary}33`,borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.primary,fontWeight:700,fontSize:13}}><Phone size={15}/> Chiama</a>}
+          {waNum&&<a href={`https://wa.me/${waNum}`} target="_blank" rel="noreferrer" style={{flex:1,minWidth:"45%",background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:"#2E7D32",fontWeight:700,fontSize:13}}>💬 WhatsApp</a>}
+          {igUrl&&<a href={igUrl} target="_blank" rel="noreferrer" style={{flex:1,minWidth:"45%",background:"#FCE4EC",border:"1px solid #F48FB1",borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:"#C2185B",fontWeight:700,fontSize:13}}><Instagram size={15}/> Instagram</a>}
+          {fbUrl&&<a href={fbUrl} target="_blank" rel="noreferrer" style={{flex:1,minWidth:"45%",background:"#E3F2FD",border:"1px solid #90CAF9",borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:"#1565C0",fontWeight:700,fontSize:13}}>📘 Facebook</a>}
         </div>
       </div>
+
+      {/* ORARI */}
+      {orari.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
+        <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>🕐 ORARI</div>
+        {orari.map(([giorno,ora])=>(
+          <div key={giorno} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:`1px solid ${s.border}`}}>
+            <span style={{color:s.sub,fontSize:13}}>{giorno}</span>
+            <span style={{color:ora==="Chiuso"?"#E53935":s.text,fontSize:13,fontWeight:700}}>{ora}</span>
+          </div>
+        ))}
+      </div>}
+
+      {/* CORSI */}
+      {corsi.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
+        <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>💪 I NOSTRI CORSI</div>
+        {corsi.map((c,i)=>(
+          <div key={i} style={{paddingBottom:12,marginBottom:12,borderBottom:i<corsi.length-1?`1px solid ${s.border}`:"none"}}>
+            <div style={{fontSize:15,fontWeight:700,color:s.text}}>{c.nome}</div>
+            {c.descrizione&&<div style={{fontSize:13,color:s.sub,marginTop:3}}>{c.descrizione}</div>}
+            {c.contatto&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>{c.contatto}</div>}
+          </div>
+        ))}
+      </div>}
+
+      {/* PROFESSIONISTI */}
+      {professionisti.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
+        <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>🏥 I NOSTRI PROFESSIONISTI</div>
+        {professionisti.map((p,i)=>(
+          <div key={i} style={{paddingBottom:12,marginBottom:12,borderBottom:i<professionisti.length-1?`1px solid ${s.border}`:"none"}}>
+            <div style={{fontSize:15,fontWeight:700,color:s.text}}>{p.nome}</div>
+            {p.descrizione&&<div style={{fontSize:13,color:s.sub,marginTop:3}}>{p.descrizione}</div>}
+            {p.contatto&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>{p.contatto}</div>}
+          </div>
+        ))}
+      </div>}
+
       <button onClick={onLogout} style={{width:"100%",background:"#FFF0F0",border:"1px solid #FFCCCC",borderRadius:12,padding:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:"#E53935",fontWeight:700,fontSize:14}}><LogOut size={16}/> Esci</button>
     </div>);
 }
@@ -339,7 +397,7 @@ export default function GymApp(){
         :tab==="home"&&!scheda?<div style={{padding:"40px 24px",textAlign:"center"}}><AlertCircle size={40} color="#E53935" style={{margin:"0 auto 16px"}}/><h2 style={{color:"#1A1A1A",fontSize:18,fontWeight:800,marginBottom:8}}>Scheda non trovata</h2><p style={{color:"#666",fontSize:14}}>Contatta il tuo trainer.</p></div>
         :tab==="progress"?<ProgressView progressData={progress} s={s} esercizi={data.esercizi} schedaId={cliente?.scheda_attiva}/>
         :tab==="history"?<HistoryView cliente={cliente} schede={data.schede} esercizi={data.esercizi} s={s}/>
-        :tab==="profile"?<ProfileView cliente={cliente} config={data.config} s={s} onLogout={handleLogout}/>
+        :tab==="profile"?<ProfileView cliente={cliente} config={data.config} s={s} onLogout={handleLogout} servizi={data.servizi||[]}/>
         :null}
       </div>
       {!selDay&&<Nav tab={tab} onNav={t=>{setTab(t);setSelDay(null)}} color={s.primary}/>}
