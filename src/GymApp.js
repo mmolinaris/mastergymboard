@@ -114,7 +114,7 @@ function RestTimer({ seconds, onClose, primaryColor }) {
         setRemaining(r => {
           if (r <= 1) {
             clearInterval(intervalRef.current);
-            try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
+            try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch(e) {}
             return 0;
           }
           return r - 1;
@@ -194,13 +194,9 @@ function VideoModal({ videoUrl, onClose }) {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
     }}>
       <button onClick={onClose} style={{
-        position: "absolute", top: 16, right: 16, background: "none",
-        border: "none", color: "#FFF", cursor: "pointer"
+        position: "absolute", top: 16, right: 16, background: "none", border: "none", color: "#FFF", cursor: "pointer"
       }}><X size={28} /></button>
-      <div style={{
-        width: "100%", maxWidth: 560, aspectRatio: "16/9",
-        borderRadius: 12, overflow: "hidden", padding: "0 16px", boxSizing: "border-box"
-      }}>
+      <div style={{ width: "100%", maxWidth: 480, aspectRatio: "16/9", borderRadius: 12, overflow: "hidden", padding: "0 16px", boxSizing: "border-box" }}>
         <iframe src={`https://www.youtube.com/embed/${id}?autoplay=1`}
           style={{ width: "100%", height: "100%", border: "none" }}
           allow="autoplay; encrypted-media" allowFullScreen />
@@ -252,15 +248,12 @@ function ExerciseCard({ ex, styles, onTimer, onVideo, progress, onLogWeight }) {
         <div style={{ padding: "0 16px 16px" }}>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             {[["SERIE", ex.serie], ["REPS", ex.ripetizioni], ["RIPOSO", `${ex.riposo_sec}s`]].map(([label, val]) => (
-              <div key={label} style={{
-                background: "#222", borderRadius: 8, padding: "8px 12px", flex: 1, textAlign: "center"
-              }}>
+              <div key={label} style={{ background: "#222", borderRadius: 8, padding: "8px 12px", flex: 1, textAlign: "center" }}>
                 <div style={{ fontSize: "11px", color: styles.textSecondary, marginBottom: 2 }}>{label}</div>
                 <div style={{ fontSize: "18px", fontWeight: 800, color: "#FFF" }}>{val}</div>
               </div>
             ))}
           </div>
-
           <div style={{
             background: `${styles.primary}15`, borderRadius: 10, padding: "10px 12px",
             marginBottom: 10, display: "flex", alignItems: "center", gap: 8
@@ -271,7 +264,6 @@ function ExerciseCard({ ex, styles, onTimer, onVideo, progress, onLogWeight }) {
               {ex.peso_suggerito === "corpo" ? "Corpo libero" : `${ex.peso_suggerito} kg`}
             </span>
           </div>
-
           <div style={{ background: "#222", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
             <div style={{ fontSize: "12px", color: styles.textSecondary, marginBottom: 6 }}>IL TUO PESO OGGI</div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -297,7 +289,6 @@ function ExerciseCard({ ex, styles, onTimer, onVideo, progress, onLogWeight }) {
               </div>
             )}
           </div>
-
           {ex.note && (
             <div style={{
               background: "#1E1A14", border: `1px solid ${styles.primary}33`,
@@ -307,7 +298,6 @@ function ExerciseCard({ ex, styles, onTimer, onVideo, progress, onLogWeight }) {
               <span style={{ fontSize: "13px", color: "#E0C080", lineHeight: 1.4 }}>{ex.note}</span>
             </div>
           )}
-
           {ex.tecnica && (
             <button onClick={() => setShowTech(!showTech)} style={{
               width: "100%", background: "none", border: `1px solid ${styles.cardBorder}`,
@@ -319,7 +309,6 @@ function ExerciseCard({ ex, styles, onTimer, onVideo, progress, onLogWeight }) {
               <span style={{ flex: 1, fontSize: "13px" }}>{showTech ? ex.tecnica : "Mostra tecnica"}</span>
             </button>
           )}
-
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => onTimer(parseInt(ex.riposo_sec) || 60)} style={{
               flex: 1, background: `${styles.primary}22`, border: `1px solid ${styles.primary}44`,
@@ -382,14 +371,16 @@ function ErrorScreen({ error, onRetry }) {
 }
 
 /* ─────────────────────────────────────────────
-   LOGIN — Codice cliente + PIN
+   LOGIN SEMPLIFICATO — Solo codice cliente!
+   Il cliente inserisce solo il suo codice (es. MG-001)
+   e accede direttamente. Niente PIN, niente password.
    ───────────────────────────────────────────── */
 function LoginScreen({ config, styles, onLogin, error }) {
   const [code, setCode] = useState("");
-  const [pin, setPin] = useState("");
+  const hasLogo = config.logo_url && config.logo_url !== "https://link-al-logo.png" && config.logo_url.trim() !== "";
 
   const handleSubmit = () => {
-    if (code.trim() && pin.trim()) onLogin(code.trim().toUpperCase(), pin.trim());
+    if (code.trim()) onLogin(code.trim().toUpperCase());
   };
 
   const handleKeyDown = (e) => {
@@ -402,15 +393,14 @@ function LoginScreen({ config, styles, onLogin, error }) {
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       padding: "32px 24px"
     }}>
-      {/* LOGO — prende logo_url dal foglio config, altrimenti mostra icona */}
+      {/* LOGO */}
       <div style={{
         width: 120, height: 120, marginBottom: 20,
         display: "flex", alignItems: "center", justifyContent: "center"
       }}>
-        {config.logo_url && config.logo_url.startsWith("http") ? (
+        {hasLogo ? (
           <img src={config.logo_url} alt="logo"
-            style={{ width: 120, height: 120, objectFit: "contain", borderRadius: "50%" }}
-            onError={(e) => { e.target.style.display = "none"; }} />
+            style={{ width: 120, height: 120, objectFit: "contain", borderRadius: "50%" }} />
         ) : (
           <div style={{
             width: 120, height: 120, borderRadius: "50%",
@@ -426,47 +416,29 @@ function LoginScreen({ config, styles, onLogin, error }) {
         {config.nome_palestra}
       </h1>
       {config.slogan && (
-        <p style={{
-          color: styles.textSecondary, fontSize: "14px", marginBottom: 40,
-          fontStyle: "italic", textAlign: "center"
-        }}>{config.slogan}</p>
+        <p style={{ color: styles.textSecondary, fontSize: "14px", marginBottom: 40, fontStyle: "italic", textAlign: "center" }}>
+          {config.slogan}
+        </p>
       )}
 
       <div style={{ width: "100%", maxWidth: 320 }}>
         <label style={{
           display: "block", fontSize: "12px", color: styles.textSecondary,
-          marginBottom: 6, fontWeight: 600, letterSpacing: "1px"
-        }}>CODICE CLIENTE</label>
+          marginBottom: 8, fontWeight: 600, letterSpacing: "1px", textAlign: "center"
+        }}>INSERISCI IL TUO CODICE</label>
+
         <input
           value={code}
           onChange={e => setCode(e.target.value.toUpperCase())}
+          onKeyDown={handleKeyDown}
           placeholder="es. MG-001"
           autoComplete="off"
           autoCapitalize="characters"
           style={{
-            width: "100%", background: styles.card, border: `1px solid ${styles.cardBorder}`,
-            borderRadius: 12, padding: "14px 16px", color: "#FFF",
-            fontSize: "16px", fontWeight: 700, outline: "none", marginBottom: 16,
-            boxSizing: "border-box", letterSpacing: "1px"
-          }}
-        />
-
-        <label style={{
-          display: "block", fontSize: "12px", color: styles.textSecondary,
-          marginBottom: 6, fontWeight: 600, letterSpacing: "1px"
-        }}>PIN</label>
-        <input
-          value={pin}
-          onChange={e => setPin(e.target.value.slice(0, 4))}
-          onKeyDown={handleKeyDown}
-          placeholder="• • • •"
-          type="password"
-          inputMode="numeric"
-          style={{
-            width: "100%", background: styles.card, border: `1px solid ${styles.cardBorder}`,
-            borderRadius: 12, padding: "14px 16px", color: "#FFF",
-            fontSize: "20px", fontWeight: 700, outline: "none", marginBottom: 8,
-            boxSizing: "border-box", letterSpacing: "8px", textAlign: "center"
+            width: "100%", background: styles.card, border: `2px solid ${styles.cardBorder}`,
+            borderRadius: 14, padding: "16px 20px", color: "#FFF",
+            fontSize: "22px", fontWeight: 800, outline: "none", marginBottom: 12,
+            boxSizing: "border-box", letterSpacing: "2px", textAlign: "center"
           }}
         />
 
@@ -475,20 +447,27 @@ function LoginScreen({ config, styles, onLogin, error }) {
         )}
 
         <button onClick={handleSubmit} style={{
-          width: "100%", background: styles.primary, border: "none", borderRadius: 12,
+          width: "100%", background: styles.primary, border: "none", borderRadius: 14,
           padding: "16px", color: "#FFF", fontSize: "16px", fontWeight: 800,
-          cursor: "pointer", marginTop: 16, textTransform: "uppercase",
-          opacity: (code.trim() && pin.trim()) ? 1 : 0.5
+          cursor: "pointer", marginTop: 8, textTransform: "uppercase",
+          opacity: code.trim() ? 1 : 0.5
         }}>
           Accedi
         </button>
+
+        <p style={{
+          color: styles.textMuted, fontSize: "12px", textAlign: "center", marginTop: 16, lineHeight: 1.5
+        }}>
+          Il codice ti è stato dato dalla palestra.<br />
+          Se non lo ricordi, chiedi al tuo trainer.
+        </p>
       </div>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────
-   DASHBOARD — Schermata principale
+   DASHBOARD — Schermata principale dopo il login
    ───────────────────────────────────────────── */
 function Dashboard({ cliente, scheda, esercizi, styles, onSelectDay, onSync, lastSync }) {
   const giorni = useMemo(() => {
@@ -518,10 +497,9 @@ function Dashboard({ cliente, scheda, esercizi, styles, onSelectDay, onSync, las
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
           <div>
-            <div style={{
-              fontSize: "11px", color: styles.primary, fontWeight: 700,
-              letterSpacing: "1.5px", marginBottom: 4
-            }}>SCHEDA ATTIVA</div>
+            <div style={{ fontSize: "11px", color: styles.primary, fontWeight: 700, letterSpacing: "1.5px", marginBottom: 4 }}>
+              SCHEDA ATTIVA
+            </div>
             <div style={{ fontSize: "20px", fontWeight: 900, color: "#FFF" }}>{scheda.nome_scheda}</div>
           </div>
           {daysLeft <= 7 && daysLeft > 0 && (
@@ -555,557 +533,4 @@ function Dashboard({ cliente, scheda, esercizi, styles, onSelectDay, onSync, las
         )}
       </div>
 
-      <h2 style={{ color: "#FFF", fontSize: "16px", fontWeight: 800, marginBottom: 12 }}>I TUOI ALLENAMENTI</h2>
-      {giorni.map((g, i) => (
-        <button key={g.nome} onClick={() => onSelectDay(g.nome)} style={{
-          width: "100%", background: styles.card, border: `1px solid ${styles.cardBorder}`,
-          borderRadius: 14, padding: "16px", marginBottom: 10, cursor: "pointer",
-          display: "flex", alignItems: "center", gap: "12px", textAlign: "left"
-        }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 12, background: `${styles.primary}22`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "16px", fontWeight: 900, color: styles.primary
-          }}>{i + 1}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: "#FFF", fontSize: "15px", fontWeight: 700 }}>{g.nome}</div>
-            <div style={{ color: styles.textSecondary, fontSize: "13px" }}>{g.count} esercizi</div>
-          </div>
-          <ChevronRight size={20} color={styles.textMuted} />
-        </button>
-      ))}
-
-      <button onClick={onSync} style={{
-        width: "100%", background: "#161616", border: `1px solid ${styles.cardBorder}`,
-        borderRadius: 12, padding: "12px", cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        color: styles.textSecondary, fontSize: "13px", marginTop: 8
-      }}>
-        <RefreshCw size={14} /> Aggiorna scheda {lastSync && `• ${lastSync}`}
-      </button>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   GIORNO DI ALLENAMENTO
-   ───────────────────────────────────────────── */
-function WorkoutDay({ giorno, esercizi, styles, onBack, onTimer, onVideo, progressData, onLogWeight }) {
-  const grouped = useMemo(() => {
-    const groups = {};
-    [...esercizi].sort((a, b) => parseInt(a.ordine) - parseInt(b.ordine)).forEach(e => {
-      if (!groups[e.gruppo_muscolare]) groups[e.gruppo_muscolare] = [];
-      groups[e.gruppo_muscolare].push(e);
-    });
-    return groups;
-  }, [esercizi]);
-
-  return (
-    <div style={{ padding: "0 16px 100px", minHeight: "100vh", background: styles.bg }}>
-      <div style={{
-        position: "sticky", top: 0, zIndex: 50, background: styles.bg,
-        padding: "16px 0 12px", display: "flex", alignItems: "center", gap: 12,
-        borderBottom: `1px solid ${styles.cardBorder}`
-      }}>
-        <button onClick={onBack} style={{
-          background: "#222", border: "none", borderRadius: 10, width: 36, height: 36,
-          display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer"
-        }}>
-          <ChevronLeft size={20} color="#FFF" />
-        </button>
-        <div>
-          <h1 style={{ color: "#FFF", fontSize: "18px", fontWeight: 800, margin: 0 }}>{giorno}</h1>
-          <p style={{ color: styles.textSecondary, fontSize: "12px", margin: 0 }}>{esercizi.length} esercizi</p>
-        </div>
-      </div>
-      <div style={{ paddingTop: 16 }}>
-        {Object.entries(grouped).map(([group, exs]) => (
-          <div key={group} style={{ marginBottom: 20 }}>
-            <div style={{
-              fontSize: "11px", fontWeight: 800, color: styles.primary,
-              letterSpacing: "2px", marginBottom: 10, paddingLeft: 4, textTransform: "uppercase"
-            }}>{group}</div>
-            {exs.map((ex, i) => (
-              <ExerciseCard key={i} ex={ex} styles={styles} onTimer={onTimer} onVideo={onVideo}
-                progress={progressData[`${ex.esercizio}__${ex.scheda_id}`] || []}
-                onLogWeight={onLogWeight} />
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   PROGRESSI
-   ───────────────────────────────────────────── */
-function ProgressTracker({ progressData, styles, esercizi, schedaAttiva }) {
-  const [selectedEx, setSelectedEx] = useState(null);
-  const activeExercises = useMemo(() =>
-    [...new Set(esercizi.filter(e => e.scheda_id === schedaAttiva).map(e => e.esercizio))],
-    [esercizi, schedaAttiva]
-  );
-  const todayLogs = useMemo(() => {
-    const today = new Date().toLocaleDateString("it-IT");
-    const logs = [];
-    Object.entries(progressData).forEach(([key, entries]) => {
-      entries.forEach(entry => {
-        if (entry.date === today) logs.push({ exercise: key.split("__")[0], weight: entry.weight });
-      });
-    });
-    return logs;
-  }, [progressData]);
-  const selectedData = selectedEx ? (progressData[`${selectedEx}__${schedaAttiva}`] || []) : [];
-
-  return (
-    <div style={{ padding: "20px 16px 100px", minHeight: "100vh", background: styles.bg }}>
-      <h1 style={{ color: "#FFF", fontSize: "24px", fontWeight: 900, marginBottom: 4 }}>Progressi 📊</h1>
-      <p style={{ color: styles.textSecondary, fontSize: "14px", marginBottom: 24 }}>Monitora i tuoi miglioramenti</p>
-
-      <div style={{
-        background: `${styles.primary}15`, borderRadius: 16, padding: "16px",
-        marginBottom: 24, border: `1px solid ${styles.primary}22`
-      }}>
-        <div style={{
-          fontSize: "11px", color: styles.primary, fontWeight: 700,
-          letterSpacing: "1.5px", marginBottom: 10
-        }}>SESSIONE DI OGGI</div>
-        {todayLogs.length === 0 ? (
-          <p style={{ color: styles.textSecondary, fontSize: "13px", margin: 0 }}>
-            Nessun peso registrato oggi. Vai alla scheda e inizia! 💪
-          </p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {todayLogs.map((l, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#FFF", fontSize: "14px" }}>{l.exercise}</span>
-                <span style={{ color: styles.primary, fontWeight: 700, fontSize: "14px" }}>{l.weight} kg</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <h2 style={{ color: "#FFF", fontSize: "16px", fontWeight: 800, marginBottom: 12 }}>STORICO PER ESERCIZIO</h2>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-        {activeExercises.map(ex => (
-          <button key={ex} onClick={() => setSelectedEx(selectedEx === ex ? null : ex)} style={{
-            background: selectedEx === ex ? styles.primary : "#222",
-            border: `1px solid ${selectedEx === ex ? styles.primary : styles.cardBorder}`,
-            borderRadius: 8, padding: "6px 12px", cursor: "pointer",
-            color: selectedEx === ex ? "#FFF" : styles.textSecondary,
-            fontSize: "12px", fontWeight: 600
-          }}>{ex}</button>
-        ))}
-      </div>
-
-      {selectedEx && (
-        <div style={{
-          background: styles.card, borderRadius: 16, padding: "16px",
-          border: `1px solid ${styles.cardBorder}`
-        }}>
-          <div style={{ fontSize: "15px", fontWeight: 700, color: "#FFF", marginBottom: 12 }}>{selectedEx}</div>
-          {selectedData.length === 0 ? (
-            <p style={{ color: styles.textSecondary, fontSize: "13px" }}>Nessun dato per questo esercizio.</p>
-          ) : (
-            <>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 120, marginBottom: 12 }}>
-                {selectedData.slice(-10).map((d, i) => {
-                  const max = Math.max(...selectedData.slice(-10).map(x => parseFloat(x.weight) || 0));
-                  const val = parseFloat(d.weight) || 0;
-                  const h = max > 0 ? (val / max) * 100 : 0;
-                  return (
-                    <div key={i} style={{
-                      flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4
-                    }}>
-                      <span style={{ fontSize: "10px", color: "#FFF", fontWeight: 700 }}>{d.weight}</span>
-                      <div style={{
-                        width: "100%", height: `${h}%`, minHeight: 4,
-                        background: styles.primary, borderRadius: "4px 4px 0 0"
-                      }} />
-                      <span style={{ fontSize: "9px", color: styles.textMuted }}>{d.date.slice(0, 5)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              {selectedData.length >= 2 && (() => {
-                const first = parseFloat(selectedData[0].weight) || 0;
-                const last = parseFloat(selectedData[selectedData.length - 1].weight) || 0;
-                const diff = last - first;
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, color: diff >= 0 ? "#22c55e" : "#ef4444" }}>
-                    <TrendingUp size={16} />
-                    <span style={{ fontSize: "13px", fontWeight: 700 }}>
-                      {diff >= 0 ? "+" : ""}{diff.toFixed(1)} kg dal primo log
-                    </span>
-                  </div>
-                );
-              })()}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   STORICO SCHEDE
-   ───────────────────────────────────────────── */
-function WorkoutHistory({ cliente, schede, esercizi, styles }) {
-  const [openScheda, setOpenScheda] = useState(null);
-  const allSchedaIds = useMemo(() => {
-    const ids = [cliente.scheda_attiva];
-    if (cliente.schede_passate) {
-      cliente.schede_passate.split(",").map(s => s.trim()).filter(Boolean).forEach(id => ids.push(id));
-    }
-    return ids;
-  }, [cliente]);
-  const schedeList = useMemo(() =>
-    allSchedaIds.map(id => schede.find(s => s.scheda_id === id)).filter(Boolean),
-    [allSchedaIds, schede]
-  );
-
-  return (
-    <div style={{ padding: "20px 16px 100px", minHeight: "100vh", background: styles.bg }}>
-      <h1 style={{ color: "#FFF", fontSize: "24px", fontWeight: 900, marginBottom: 4 }}>Storico 📋</h1>
-      <p style={{ color: styles.textSecondary, fontSize: "14px", marginBottom: 24 }}>Le tue schede di allenamento</p>
-
-      {schedeList.map(s => {
-        const isActive = s.scheda_id === cliente.scheda_attiva;
-        const isOpen = openScheda === s.scheda_id;
-        const exs = esercizi.filter(e => e.scheda_id === s.scheda_id);
-        const giorni = [...new Set(exs.map(e => e.giorno))];
-        return (
-          <div key={s.scheda_id} style={{
-            background: styles.card, borderRadius: 16, marginBottom: 12,
-            border: `1px solid ${isActive ? styles.primary + "44" : styles.cardBorder}`,
-            overflow: "hidden"
-          }}>
-            <button onClick={() => setOpenScheda(isOpen ? null : s.scheda_id)} style={{
-              width: "100%", background: "none", border: "none", cursor: "pointer",
-              padding: "16px", display: "flex", alignItems: "center", gap: 12,
-              color: "#FFF", textAlign: "left"
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: isActive ? `${styles.primary}22` : "#222"
-              }}>
-                <ClipboardList size={20} color={isActive ? styles.primary : styles.textMuted} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ fontSize: "15px", fontWeight: 700 }}>{s.nome_scheda}</span>
-                  {isActive && (
-                    <span style={{
-                      background: styles.primary, color: "#FFF", fontSize: "9px",
-                      fontWeight: 800, padding: "2px 8px", borderRadius: 4, letterSpacing: "1px"
-                    }}>ATTIVA</span>
-                  )}
-                </div>
-                <div style={{ fontSize: "12px", color: styles.textSecondary, marginTop: 2 }}>
-                  {s.obiettivo} • {formatDate(s.data_creazione)} → {formatDate(s.data_scadenza)}
-                </div>
-              </div>
-              <ChevronDown size={18} color={styles.textMuted}
-                style={{ transform: isOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
-            </button>
-            {isOpen && (
-              <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${styles.cardBorder}` }}>
-                {s.note_trainer && (
-                  <p style={{
-                    color: styles.textSecondary, fontSize: "12px", fontStyle: "italic", marginBottom: 12
-                  }}>💡 {s.note_trainer}</p>
-                )}
-                {giorni.map(g => {
-                  const dayExs = exs.filter(e => e.giorno === g).sort((a, b) => parseInt(a.ordine) - parseInt(b.ordine));
-                  return (
-                    <div key={g} style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: "12px", fontWeight: 700, color: styles.primary, marginBottom: 6 }}>{g}</div>
-                      {dayExs.map((e, i) => (
-                        <div key={i} style={{
-                          display: "flex", justifyContent: "space-between",
-                          padding: "6px 0", borderBottom: `1px solid ${styles.cardBorder}22`
-                        }}>
-                          <span style={{ color: "#FFF", fontSize: "13px" }}>{e.esercizio}</span>
-                          <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{e.serie}×{e.ripetizioni}</span>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   PROFILO
-   ───────────────────────────────────────────── */
-function ProfileScreen({ cliente, config, styles, onLogout }) {
-  return (
-    <div style={{ padding: "20px 16px 100px", minHeight: "100vh", background: styles.bg }}>
-      <h1 style={{ color: "#FFF", fontSize: "24px", fontWeight: 900, marginBottom: 24 }}>Profilo ⚙️</h1>
-
-      <div style={{
-        background: styles.card, borderRadius: 16, padding: "20px", marginBottom: 16,
-        border: `1px solid ${styles.cardBorder}`
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16, background: `${styles.primary}22`,
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
-            <User size={28} color={styles.primary} />
-          </div>
-          <div>
-            <div style={{ fontSize: "20px", fontWeight: 900, color: "#FFF" }}>
-              {cliente.nome} {cliente.cognome}
-            </div>
-            <div style={{ fontSize: "13px", color: styles.textSecondary }}>Codice: {cliente.codice}</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[
-            ["Email", cliente.email],
-            ["Telefono", cliente.telefono],
-            ["Iscritto dal", formatDate(cliente.data_iscrizione)]
-          ].map(([k, v]) => (
-            <div key={k} style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{k}</span>
-              <span style={{ color: "#FFF", fontSize: "13px" }}>{v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{
-        background: styles.card, borderRadius: 16, padding: "20px", marginBottom: 16,
-        border: `1px solid ${styles.cardBorder}`
-      }}>
-        <div style={{
-          fontSize: "12px", color: styles.primary, fontWeight: 700,
-          letterSpacing: "1.5px", marginBottom: 16
-        }}>LA TUA PALESTRA</div>
-        <div style={{ fontSize: "18px", fontWeight: 800, color: "#FFF", marginBottom: 12 }}>
-          {config.nome_palestra}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-          {config.indirizzo && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <MapPin size={16} color={styles.textSecondary} />
-              <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.indirizzo}</span>
-            </div>
-          )}
-          {config.telefono && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Phone size={16} color={styles.textSecondary} />
-              <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.telefono}</span>
-            </div>
-          )}
-          {config.instagram && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Instagram size={16} color={styles.textSecondary} />
-              <span style={{ color: styles.textSecondary, fontSize: "13px" }}>{config.instagram}</span>
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {config.telefono && (
-            <a href={`tel:${config.telefono}`} style={{
-              flex: 1, background: `${styles.primary}22`, border: `1px solid ${styles.primary}44`,
-              borderRadius: 10, padding: "12px", textDecoration: "none",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              color: styles.primary, fontWeight: 700, fontSize: "13px"
-            }}><Phone size={16} /> Chiama</a>
-          )}
-          {config.instagram && (
-            <a href={`https://instagram.com/${config.instagram.replace("@", "")}`}
-              target="_blank" rel="noreferrer" style={{
-                flex: 1, background: "#222", border: `1px solid ${styles.cardBorder}`,
-                borderRadius: 10, padding: "12px", textDecoration: "none",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                color: "#FFF", fontWeight: 700, fontSize: "13px"
-              }}><Instagram size={16} /> Instagram</a>
-          )}
-        </div>
-      </div>
-
-      <button onClick={onLogout} style={{
-        width: "100%", background: "#1C1111", border: "1px solid #3A1111",
-        borderRadius: 12, padding: "14px", cursor: "pointer",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        color: "#ef4444", fontWeight: 700, fontSize: "14px"
-      }}>
-        <LogOut size={16} /> Esci
-      </button>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   APP PRINCIPALE
-   ───────────────────────────────────────────── */
-export default function GymApp() {
-  const [appData, setAppData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [loginError, setLoginError] = useState("");
-  const [currentCliente, setCurrentCliente] = useState(null);
-  const [activeTab, setActiveTab] = useState("home");
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [lastSync, setLastSync] = useState(null);
-  const [timerSeconds, setTimerSeconds] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [progressData, setProgressData] = useState({});
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const data = await fetchAllData();
-      setAppData(data);
-      setLastSync(new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" }));
-    } catch (err) {
-      setFetchError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const styles = useMemo(() =>
-    getStyles(appData?.config?.colore_primario, appData?.config?.colore_sfondo),
-    [appData]
-  );
-  const primaryColor = styles.primary;
-
-  const currentScheda = useMemo(() => {
-    if (!currentCliente || !appData) return null;
-    return appData.schede.find(s => s.scheda_id === currentCliente.scheda_attiva);
-  }, [currentCliente, appData]);
-
-  const dayExercises = useMemo(() => {
-    if (!selectedDay || !currentCliente || !appData) return [];
-    return appData.esercizi.filter(
-      e => e.scheda_id === currentCliente.scheda_attiva && e.giorno === selectedDay
-    );
-  }, [selectedDay, currentCliente, appData]);
-
-  /* LOGIN — codice + PIN, salva credenziali per accesso automatico */
-  const handleLogin = useCallback((code, pin) => {
-    if (!appData) return;
-    const cliente = appData.clienti.find(c => c.codice === code);
-    if (!cliente) {
-      setLoginError("Codice cliente non trovato");
-      return;
-    }
-    if (cliente.pin && cliente.pin !== pin) {
-      setLoginError("PIN non corretto");
-      return;
-    }
-    setCurrentCliente(cliente);
-    setLoggedIn(true);
-    setLoginError("");
-    /* Salva credenziali per la prossima volta */
-    try { localStorage.setItem("gymboard_code", code); localStorage.setItem("gymboard_pin", pin); } catch(e) {}
-  }, [appData]);
-
-  /* AUTO-LOGIN — quando i dati sono caricati, prova il login automatico */
-  useEffect(() => {
-    if (!appData || loggedIn) return;
-    try {
-      const savedCode = localStorage.getItem("gymboard_code");
-      const savedPin = localStorage.getItem("gymboard_pin");
-      if (savedCode) {
-        const cliente = appData.clienti.find(c => c.codice === savedCode);
-        if (cliente && (!cliente.pin || cliente.pin === savedPin)) {
-          setCurrentCliente(cliente);
-          setLoggedIn(true);
-        }
-      }
-    } catch(e) {}
-  }, [appData, loggedIn]);
-
-  const handleLogout = useCallback(() => {
-    setLoggedIn(false);
-    setCurrentCliente(null);
-    setActiveTab("home");
-    setSelectedDay(null);
-    /* Cancella credenziali salvate */
-    try { localStorage.removeItem("gymboard_code"); localStorage.removeItem("gymboard_pin"); } catch(e) {}
-  }, []);
-
-  const handleLogWeight = useCallback((exercise, schedaId, weight) => {
-    const key = `${exercise}__${schedaId}`;
-    const date = new Date().toLocaleDateString("it-IT");
-    setProgressData(prev => ({
-      ...prev,
-      [key]: [...(prev[key] || []), { date, weight }]
-    }));
-  }, []);
-
-  if (loading) return <LoadingScreen primary="#FF6B00" />;
-  if (fetchError) return <ErrorScreen error={fetchError} onRetry={loadData} />;
-  if (!loggedIn) return <LoginScreen config={appData.config} styles={styles} onLogin={handleLogin} error={loginError} />;
-
-  return (
-    <div style={{
-      width: "100%",
-      margin: "0 auto",
-      position: "relative",
-      background: styles.bg,
-      minHeight: "100vh"
-    }}>
-      <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { background: ${styles.bg}; }
-        input::placeholder { color: #555; }
-        ::-webkit-scrollbar { width: 0; }
-      `}</style>
-
-      {timerSeconds !== null && (
-        <RestTimer seconds={timerSeconds} onClose={() => setTimerSeconds(null)} primaryColor={primaryColor} />
-      )}
-      {videoUrl && <VideoModal videoUrl={videoUrl} onClose={() => setVideoUrl(null)} />}
-
-      <div>
-        {selectedDay ? (
-          <WorkoutDay giorno={selectedDay} esercizi={dayExercises} styles={styles}
-            onBack={() => setSelectedDay(null)}
-            onTimer={s => setTimerSeconds(s)}
-            onVideo={v => setVideoUrl(v)}
-            progressData={progressData}
-            onLogWeight={handleLogWeight} />
-        ) : activeTab === "home" && currentScheda ? (
-          <Dashboard cliente={currentCliente} scheda={currentScheda} esercizi={appData.esercizi}
-            styles={styles} onSelectDay={day => setSelectedDay(day)}
-            onSync={loadData} lastSync={lastSync} />
-        ) : activeTab === "progress" ? (
-          <ProgressTracker progressData={progressData} styles={styles}
-            esercizi={appData.esercizi} schedaAttiva={currentCliente.scheda_attiva} />
-        ) : activeTab === "history" ? (
-          <WorkoutHistory cliente={currentCliente} schede={appData.schede}
-            esercizi={appData.esercizi} styles={styles} />
-        ) : activeTab === "profile" ? (
-          <ProfileScreen cliente={currentCliente} config={appData.config}
-            styles={styles} onLogout={handleLogout} />
-        ) : null}
-      </div>
-
-      {!selectedDay && (
-        <BottomNav activeTab={activeTab}
-          onNavigate={tab => { setActiveTab(tab); setSelectedDay(null); }}
-          primaryColor={primaryColor} />
-      )}
-    </div>
-  );
-}
+      <h
