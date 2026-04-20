@@ -150,8 +150,11 @@ function ExCard({ex,s,onTimer,onVideo,progress,onLog}){
 }
 
 function LoginScreen({config,s,onLogin,error}){
-  const [code,setCode]=useState("");const [pin,setPin]=useState("");
+  const [code,setCode]=useState("");
+  const [pin,setPin]=useState("");
+  const [gdpr,setGdpr]=useState(false);
   const hasLogo=config.logo_url?.startsWith("http");
+  const canLogin = code.trim() && pin.trim() && gdpr;
   return(
     <div style={{minHeight:"100vh",background:"#FFFFFF",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"32px 24px"}}>
       <div style={{width:120,height:120,marginBottom:20,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -163,9 +166,24 @@ function LoginScreen({config,s,onLogin,error}){
         <label style={{display:"block",fontSize:12,color:s.sub,marginBottom:6,fontWeight:600,letterSpacing:"1px"}}>CODICE CLIENTE</label>
         <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="es. MG-001" autoComplete="off" style={{width:"100%",background:"#F5F5F5",border:`1px solid ${s.border}`,borderRadius:12,padding:"14px 16px",color:s.text,fontSize:16,fontWeight:700,outline:"none",marginBottom:16,boxSizing:"border-box",letterSpacing:"1px"}}/>
         <label style={{display:"block",fontSize:12,color:s.sub,marginBottom:6,fontWeight:600,letterSpacing:"1px"}}>PIN</label>
-        <input value={pin} onChange={e=>setPin(e.target.value.slice(0,4))} placeholder="• • • •" type="password" inputMode="numeric" onKeyDown={e=>{if(e.key==="Enter"&&code.trim()&&pin.trim())onLogin(code.trim().toUpperCase(),pin.trim())}} style={{width:"100%",background:"#F5F5F5",border:`1px solid ${s.border}`,borderRadius:12,padding:"14px 16px",color:s.text,fontSize:20,fontWeight:700,outline:"none",marginBottom:8,boxSizing:"border-box",letterSpacing:"8px",textAlign:"center"}}/>
+        <input value={pin} onChange={e=>setPin(e.target.value.slice(0,4))} placeholder="• • • •" type="password" inputMode="numeric" onKeyDown={e=>{if(e.key==="Enter"&&canLogin)onLogin(code.trim().toUpperCase(),pin.trim())}} style={{width:"100%",background:"#F5F5F5",border:`1px solid ${s.border}`,borderRadius:12,padding:"14px 16px",color:s.text,fontSize:20,fontWeight:700,outline:"none",marginBottom:16,boxSizing:"border-box",letterSpacing:"8px",textAlign:"center"}}/>
+        
+        {/* GDPR CHECKBOX */}
+        <div onClick={()=>setGdpr(!gdpr)} style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16,cursor:"pointer",padding:"12px 14px",background:gdpr?`${s.primary}08`:"#F5F5F5",borderRadius:12,border:`1.5px solid ${gdpr?s.primary:s.border}`,transition:"all 0.2s"}}>
+          <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${gdpr?s.primary:s.border}`,background:gdpr?s.primary:"#FFF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"all 0.2s"}}>
+            {gdpr&&<span style={{color:"#FFF",fontSize:14,fontWeight:900}}>✓</span>}
+          </div>
+          <p style={{fontSize:12,color:s.sub,lineHeight:1.5,margin:0}}>
+            Ho letto e accetto il trattamento dei dati personali ai sensi del <span style={{color:s.primary,fontWeight:700}}>D.Lgs. 196/2003</span> e del <span style={{color:s.primary,fontWeight:700}}>GDPR 2016/679</span>
+          </p>
+        </div>
+
         {error&&<p style={{color:"#E53935",fontSize:13,textAlign:"center",marginBottom:8}}>{error}</p>}
-        <button onClick={()=>onLogin(code.trim().toUpperCase(),pin.trim())} style={{width:"100%",background:s.primary,border:"none",borderRadius:12,padding:16,color:"#FFF",fontSize:16,fontWeight:800,cursor:"pointer",marginTop:16,textTransform:"uppercase",opacity:code.trim()&&pin.trim()?1:0.5}}>Accedi</button>
+        <button onClick={()=>canLogin&&onLogin(code.trim().toUpperCase(),pin.trim())} style={{width:"100%",background:canLogin?s.primary:"#BDBDBD",border:"none",borderRadius:12,padding:16,color:"#FFF",fontSize:16,fontWeight:800,cursor:canLogin?"pointer":"default",marginTop:4,textTransform:"uppercase",transition:"background 0.2s"}}>Accedi</button>
+        
+        {!gdpr&&code.trim()&&pin.trim()&&(
+          <p style={{color:"#E53935",fontSize:12,textAlign:"center",marginTop:8}}>⚠️ Accetta il trattamento dei dati per continuare</p>
+        )}
       </div>
     </div>);
 }
