@@ -719,8 +719,9 @@ function ClienteDetail({ cliente, data, onBack, onWhatsApp, onRefresh }) {
   const [openPassate, setOpenPassate] = useState({});
   const [confirmDel,  setConfirmDel]  = useState(null);
   const [delLoading,  setDelLoading]  = useState(false);
-  const [editMode,    setEditMode]    = useState(false);
-  const [savingEdit,  setSavingEdit]  = useState(false);
+  const [editMode,     setEditMode]    = useState(false);
+  const [savingEdit,   setSavingEdit]  = useState(false);
+  const [showTemplate, setShowTemplate] = useState(false);
 
   const handleDeletePassata = async () => {
     setDelLoading(true);
@@ -783,19 +784,32 @@ function ClienteDetail({ cliente, data, onBack, onWhatsApp, onRefresh }) {
         </div>
       </div>
 
+      {showTemplate && (
+        <TemplateModal
+          cliente={cliente}
+          onClose={() => setShowTemplate(false)}
+          onSaved={onRefresh}
+        />
+      )}
+
       <SectionBox title="Scheda attiva" icon="🟢"
-        action={schedaAttiva && (
+        action={
           <div style={{ display: "flex", gap: 8 }}>
-            {!editMode && (
+            <button onClick={() => setShowTemplate(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: T.primary, color: "#fff", border: "none", borderRadius: 9, padding: "8px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+              <Zap size={14} /> Nuova scheda
+            </button>
+            {schedaAttiva && !editMode && (
               <button onClick={() => setEditMode(true)} style={{ display: "flex", alignItems: "center", gap: 6, background: T.primaryLight, color: T.primary, border: `1px solid ${T.primaryBorder}`, borderRadius: 9, padding: "7px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
                 <Edit3 size={14} /> Modifica
               </button>
             )}
-            <button onClick={() => printScheda(schedaAttiva, exForScheda(schedaAttiva.scheda_id), cliente)} style={{ display: "flex", alignItems: "center", gap: 6, background: T.bg, color: T.textSec, border: `1px solid ${T.border}`, borderRadius: 9, padding: "7px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-              <Printer size={14} /> Stampa
-            </button>
+            {schedaAttiva && (
+              <button onClick={() => printScheda(schedaAttiva, exForScheda(schedaAttiva.scheda_id), cliente)} style={{ display: "flex", alignItems: "center", gap: 6, background: T.bg, color: T.textSec, border: `1px solid ${T.border}`, borderRadius: 9, padding: "7px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                <Printer size={14} /> Stampa
+              </button>
+            )}
           </div>
-        )}
+        }
       >
         {editMode && schedaAttiva ? (
           <EditorScheda
