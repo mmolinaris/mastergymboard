@@ -143,18 +143,7 @@ function ExCard({ex,s,onTimer,onVideo,progress,onLog}){
         {hasTech&&<button onClick={()=>setShowT(!showT)} style={{width:"100%",background:"none",border:`1px solid ${s.border}`,borderRadius:10,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,marginBottom:10,color:s.sub,textAlign:"left"}}><Info size={16}/><span style={{flex:1,fontSize:13,color:s.text}}>{showT?ex.tecnica:"Mostra tecnica"}</span></button>}
         <div style={{display:"flex",gap:8}}>
           {recSec>0&&<button onClick={()=>onTimer(recSec)} style={{flex:1,background:`${s.primary}15`,border:`1px solid ${s.primary}33`,borderRadius:10,padding:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.primary,fontWeight:700,fontSize:13}}><Timer size={16}/> Riposo {ex.recupero}s</button>}
-          {hasVid&&(
-            <div style={{marginBottom:8}}>
-              <div style={{borderRadius:10,overflow:"hidden",position:"relative",cursor:"pointer"}} onClick={()=>onVideo(ex.video_url)}>
-                <img src={`https://img.youtube.com/vi/${ytId(ex.video_url)}/mqdefault.jpg`} alt={ex.esercizio} style={{width:"100%",height:120,objectFit:"cover",display:"block"}} onError={e=>{e.target.style.display="none"}}/>
-                <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(0,0,0,0.3)"}}>
-                  <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(255,255,255,0.9)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    <span style={{fontSize:18,marginLeft:3}}>▶</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {hasVid&&<button onClick={()=>onVideo(ex.video_url)} style={{flex:1,background:"#EBEBEB",border:`1px solid ${s.border}`,borderRadius:10,padding:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.text,fontWeight:700,fontSize:13}}><Video size={16}/> Video</button>}
         </div>
       </div>)}
     </div>);
