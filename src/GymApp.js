@@ -9,6 +9,7 @@ import {
 const SHEET_ID = "144-i_O8EGeL51ku9oi7n44oS1KGQY2cutIrulSVDJcw";
 const API_KEY = "AIzaSyDEoQi1P3VVocd7Yokkw8by8PLWq-t1IV4";
 const BASE_URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values`;
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxFzrYPbupoWLKx3SslQZH7ZIToV_rf23iynPla5x09GvmG7oemtEd_O3qlraBuA9ic/exec";
 
 async function fetchSheet(tab) {
   const res = await fetch(`${BASE_URL}/${encodeURIComponent(tab)}?key=${API_KEY}`);
@@ -43,6 +44,14 @@ async function fetchAllData() {
     esercizi,
     servizi
   };
+}
+
+async function writeViaScript(action, payload) {
+  const body = JSON.stringify({ action, ...payload });
+  const res = await fetch(SCRIPT_URL, { method: "POST", body, redirect: "follow" });
+  if (!res.ok) throw new Error(`Errore scrittura: ${res.status}`);
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return { status: "ok" }; }
 }
 
 const daysUntil = d => Math.ceil((new Date(d) - new Date()) / 864e5);
@@ -108,11 +117,21 @@ function VideoModal({url,onClose}){ const id=ytId(url);if(!id)return null; retur
 }
 
 function ExCard({ex,s,onTimer,onVideo,progress,onLog}){
-  const [open,setOpen]=useState(false);const [showT,setShowT]=useState(false);const [wt,setWt]=useState("");
+  const [open,setOpen]=useState(false);const [showT,setShowT]=useState(false);
+  const [wt,setWt]=useState("");const [saving,setSaving]=useState(false);const [saved,setSaved]=useState(false);
   const logged=progress||[];const cardio=isCardio(ex);
   const hasPeso=ex.peso_suggerito?.trim();const hasVid=ex.video_url?.trim();const hasNote=ex.note?.trim();const hasTech=ex.tecnica?.trim();
   const recSec=parseRec(ex.recupero);
-  const doLog=()=>{if(!wt.trim())return;onLog(ex.esercizio,ex.scheda_id,wt.trim());setWt("")};
+
+  const doLog=async()=>{
+    if(!wt.trim())return;
+    setSaving(true);
+    await onLog(ex.esercizio,ex.scheda_id,wt.trim());
+    setSaving(false);
+    setSaved(true);
+    setWt("");
+    setTimeout(()=>setSaved(false),2000);
+  };
 
   if(cardio) return(
     <div style={{background:s.card,borderRadius:14,border:`1px solid ${s.border}`,marginBottom:10,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
@@ -134,11 +153,21 @@ function ExCard({ex,s,onTimer,onVideo,progress,onLog}){
         <div style={{display:"flex",gap:8,marginBottom:12}}>{[ex.serie&&["SERIE",ex.serie],ex.ripetizioni&&["REPS",ex.ripetizioni],["REC.",ex.recupero||"0"]].filter(Boolean).map(([l,v])=><div key={l} style={{background:"#EBEBEB",borderRadius:8,padding:"8px 12px",flex:1,textAlign:"center"}}><div style={{fontSize:11,color:s.sub,marginBottom:2}}>{l}</div><div style={{fontSize:18,fontWeight:800,color:s.text}}>{v}</div></div>)}</div>
         {ex.muscolo&&<div style={{display:"inline-block",background:`${s.primary}15`,borderRadius:8,padding:"4px 12px",marginBottom:10}}><span style={{fontSize:12,color:s.primary,fontWeight:700}}>{ex.muscolo}</span></div>}
         {hasPeso&&<div style={{background:`${s.primary}10`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",alignItems:"center",gap:8}}><Target size={16} color={s.primary}/><span style={{fontSize:13,color:s.sub}}>Peso suggerito:</span><span style={{fontSize:15,fontWeight:700,color:s.primary}}>{ex.peso_suggerito} kg</span></div>}
+
+        {/* CAMPO PESO — con feedback salvataggio */}
         <div style={{background:"#EBEBEB",borderRadius:10,padding:"10px 12px",marginBottom:10}}>
           <div style={{fontSize:12,color:s.sub,marginBottom:6}}>IL TUO PESO OGGI</div>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}><input value={wt} onChange={e=>setWt(e.target.value)} placeholder="kg" type="number" inputMode="decimal" style={{flex:1,background:"#FFF",border:`1px solid ${s.border}`,borderRadius:8,padding:"8px 12px",color:s.text,fontSize:16,fontWeight:700,outline:"none"}}/><button onClick={doLog} style={{background:s.primary,border:"none",borderRadius:8,padding:"8px 16px",color:"#FFF",fontWeight:700,cursor:"pointer",fontSize:14}}>Salva</button></div>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input value={wt} onChange={e=>setWt(e.target.value)} placeholder="kg" type="number" inputMode="decimal"
+              style={{flex:1,background:"#FFF",border:`1px solid ${s.border}`,borderRadius:8,padding:"8px 12px",color:s.text,fontSize:16,fontWeight:700,outline:"none"}}/>
+            <button onClick={doLog} disabled={saving||!wt.trim()}
+              style={{background:saved?"#22c55e":s.primary,border:"none",borderRadius:8,padding:"8px 16px",color:"#FFF",fontWeight:700,cursor:"pointer",fontSize:14,opacity:saving?0.7:1,transition:"background 0.3s",minWidth:64}}>
+              {saving?"..." : saved?"✓ Ok!" : "Salva"}
+            </button>
+          </div>
           {logged.length>0&&<div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>{logged.slice(-5).map((l,i)=><span key={i} style={{background:"#FFF",borderRadius:6,padding:"3px 8px",fontSize:11,color:s.sub}}>{l.date}: <b style={{color:s.text}}>{l.weight}kg</b></span>)}</div>}
         </div>
+
         {hasNote&&<div style={{background:`${s.primary}08`,border:`1px solid ${s.primary}33`,borderRadius:10,padding:"10px 12px",marginBottom:10,display:"flex",gap:8}}><AlertCircle size={16} color={s.primary} style={{flexShrink:0,marginTop:2}}/><span style={{fontSize:13,color:s.text,lineHeight:1.4}}>{ex.note}</span></div>}
         {hasTech&&<button onClick={()=>setShowT(!showT)} style={{width:"100%",background:"none",border:`1px solid ${s.border}`,borderRadius:10,padding:"10px 12px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,marginBottom:10,color:s.sub,textAlign:"left"}}><Info size={16}/><span style={{flex:1,fontSize:13,color:s.text}}>{showT?ex.tecnica:"Mostra tecnica"}</span></button>}
         <div style={{display:"flex",gap:8}}>
@@ -167,23 +196,15 @@ function LoginScreen({config,s,onLogin,error}){
         <input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder="es. MG-001" autoComplete="off" style={{width:"100%",background:"#F5F5F5",border:`1px solid ${s.border}`,borderRadius:12,padding:"14px 16px",color:s.text,fontSize:16,fontWeight:700,outline:"none",marginBottom:16,boxSizing:"border-box",letterSpacing:"1px"}}/>
         <label style={{display:"block",fontSize:12,color:s.sub,marginBottom:6,fontWeight:600,letterSpacing:"1px"}}>PIN</label>
         <input value={pin} onChange={e=>setPin(e.target.value.slice(0,4))} placeholder="• • • •" type="password" inputMode="numeric" onKeyDown={e=>{if(e.key==="Enter"&&canLogin)onLogin(code.trim().toUpperCase(),pin.trim())}} style={{width:"100%",background:"#F5F5F5",border:`1px solid ${s.border}`,borderRadius:12,padding:"14px 16px",color:s.text,fontSize:20,fontWeight:700,outline:"none",marginBottom:16,boxSizing:"border-box",letterSpacing:"8px",textAlign:"center"}}/>
-        
-        {/* GDPR CHECKBOX */}
         <div onClick={()=>setGdpr(!gdpr)} style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16,cursor:"pointer",padding:"12px 14px",background:gdpr?`${s.primary}08`:"#F5F5F5",borderRadius:12,border:`1.5px solid ${gdpr?s.primary:s.border}`,transition:"all 0.2s"}}>
           <div style={{width:22,height:22,borderRadius:6,border:`2px solid ${gdpr?s.primary:s.border}`,background:gdpr?s.primary:"#FFF",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1,transition:"all 0.2s"}}>
             {gdpr&&<span style={{color:"#FFF",fontSize:14,fontWeight:900}}>✓</span>}
           </div>
-          <p style={{fontSize:12,color:s.sub,lineHeight:1.5,margin:0}}>
-            Ho letto e accetto il trattamento dei dati personali ai sensi del <span style={{color:s.primary,fontWeight:700}}>D.Lgs. 196/2003</span> e del <span style={{color:s.primary,fontWeight:700}}>GDPR 2016/679</span>
-          </p>
+          <p style={{fontSize:12,color:s.sub,lineHeight:1.5,margin:0}}>Ho letto e accetto il trattamento dei dati personali ai sensi del <span style={{color:s.primary,fontWeight:700}}>D.Lgs. 196/2003</span> e del <span style={{color:s.primary,fontWeight:700}}>GDPR 2016/679</span></p>
         </div>
-
         {error&&<p style={{color:"#E53935",fontSize:13,textAlign:"center",marginBottom:8}}>{error}</p>}
         <button onClick={()=>canLogin&&onLogin(code.trim().toUpperCase(),pin.trim())} style={{width:"100%",background:canLogin?s.primary:"#BDBDBD",border:"none",borderRadius:12,padding:16,color:"#FFF",fontSize:16,fontWeight:800,cursor:canLogin?"pointer":"default",marginTop:4,textTransform:"uppercase",transition:"background 0.2s"}}>Accedi</button>
-        
-        {!gdpr&&code.trim()&&pin.trim()&&(
-          <p style={{color:"#E53935",fontSize:12,textAlign:"center",marginTop:8}}>⚠️ Accetta il trattamento dei dati per continuare</p>
-        )}
+        {!gdpr&&code.trim()&&pin.trim()&&<p style={{color:"#E53935",fontSize:12,textAlign:"center",marginTop:8}}>⚠️ Accetta il trattamento dei dati per continuare</p>}
       </div>
     </div>);
 }
@@ -299,8 +320,6 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
   return(
     <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
       <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:24}}>Profilo ⚙️</h1>
-
-      {/* DATI CLIENTE */}
       <div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:16}}>
           <div style={{width:56,height:56,borderRadius:16,background:`${s.primary}15`,display:"flex",alignItems:"center",justifyContent:"center"}}><User size={28} color={s.primary}/></div>
@@ -308,15 +327,11 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
         </div>
         {[["Email",cliente.email],["Telefono",cliente.telefono],["Iscritto dal",fmtDate(cliente.data_iscrizione)]].filter(([,v])=>v).map(([k,v])=><div key={k} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderBottom:`1px solid ${s.border}`}}><span style={{color:s.sub,fontSize:13}}>{k}</span><span style={{color:s.text,fontSize:13,fontWeight:600}}>{v}</span></div>)}
       </div>
-
-      {/* LA TUA PALESTRA */}
       <div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>LA TUA PALESTRA</div>
         <div style={{fontSize:18,fontWeight:800,color:s.text,marginBottom:12}}>{config.nome_palestra}</div>
         {config.indirizzo&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}><MapPin size={15} color={s.sub}/><span style={{color:s.sub,fontSize:13}}>{config.indirizzo}</span></div>}
         {config.telefono&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><Phone size={15} color={s.sub}/><span style={{color:s.sub,fontSize:13}}>{config.telefono}</span></div>}
-
-        {/* TASTI SOCIAL */}
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {config.telefono&&<a href={`tel:${config.telefono}`} style={{flex:1,minWidth:"45%",background:`${s.primary}15`,border:`1px solid ${s.primary}33`,borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:s.primary,fontWeight:700,fontSize:13}}><Phone size={15}/> Chiama</a>}
           {waNum&&<a href={`https://wa.me/${waNum}`} target="_blank" rel="noreferrer" style={{flex:1,minWidth:"45%",background:"#E8F5E9",border:"1px solid #A5D6A7",borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:"#2E7D32",fontWeight:700,fontSize:13}}>💬 WhatsApp</a>}
@@ -324,8 +339,6 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
           {fbUrl&&<a href={fbUrl} target="_blank" rel="noreferrer" style={{flex:1,minWidth:"45%",background:"#E3F2FD",border:"1px solid #90CAF9",borderRadius:10,padding:"11px 8px",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6,color:"#1565C0",fontWeight:700,fontSize:13}}>📘 Facebook</a>}
         </div>
       </div>
-
-      {/* ORARI */}
       {orari.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>🕐 ORARI</div>
         {orari.map(([giorno,ora])=>(
@@ -335,8 +348,6 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
           </div>
         ))}
       </div>}
-
-      {/* CORSI */}
       {corsi.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>💪 I NOSTRI CORSI</div>
         {corsi.map((c,i)=>(
@@ -347,8 +358,6 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
           </div>
         ))}
       </div>}
-
-      {/* PROFESSIONISTI */}
       {professionisti.length>0&&<div style={{background:s.card,borderRadius:16,padding:20,marginBottom:16,border:`1px solid ${s.border}`}}>
         <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:14}}>🏥 I NOSTRI PROFESSIONISTI</div>
         {professionisti.map((p,i)=>(
@@ -359,7 +368,6 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
           </div>
         ))}
       </div>}
-
       <button onClick={onLogout} style={{width:"100%",background:"#FFF0F0",border:"1px solid #FFCCCC",borderRadius:12,padding:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,color:"#E53935",fontWeight:700,fontSize:14}}><LogOut size={16}/> Esci</button>
     </div>);
 }
@@ -398,7 +406,29 @@ export default function GymApp(){
   },[data,loggedIn]);
 
   const handleLogout=useCallback(()=>{setLoggedIn(false);setCliente(null);setTab("home");setSelDay(null);try{localStorage.removeItem("gb_code");localStorage.removeItem("gb_pin")}catch(e){}},[]);
-  const handleLog=useCallback((exercise,schedaId,weight)=>{const k=`${exercise}__${schedaId}`;const d=new Date().toLocaleDateString("it-IT");setProgress(p=>({...p,[k]:[...(p[k]||[]),{date:d,weight}]}))},[]);
+
+  // ── SALVA PROGRESSO — locale + Sheet ──
+  const handleLog=useCallback(async(exercise,schedaId,weight)=>{
+    const k=`${exercise}__${schedaId}`;
+    const d=new Date().toLocaleDateString("it-IT");
+    // 1. Salva in locale (immediato)
+    setProgress(p=>({...p,[k]:[...(p[k]||[]),{date:d,weight}]}));
+    // 2. Salva su Sheet (in background, non blocca)
+    try {
+      await writeViaScript("saveProgresso", {
+        progresso: {
+          codice_cliente: cliente?.codice || "",
+          data: d,
+          esercizio: exercise,
+          peso_kg: weight,
+          ripetizioni_fatte: "",
+          note_cliente: "",
+        }
+      });
+    } catch(e) {
+      console.warn("Progresso non salvato su Sheet:", e.message);
+    }
+  },[cliente]);
 
   if(loading)return<LoadingScreen c="#E53935"/>;
   if(error)return<ErrorScreen error={error} onRetry={load}/>;
