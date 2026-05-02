@@ -405,7 +405,7 @@ export default function GymApp(){
     }catch(e){}
   },[data,loggedIn]);
 
-  const handleLogout=useCallback(()=>{setLoggedIn(false);setCliente(null);setTab("home");setSelDay(null);try{localStorage.removeItem("gb_code");localStorage.removeItem("gb_pin")}catch(e){}},[]);
+  const handleLogout=useCallback(()=>{setLoggedIn(false);setCliente(null);setTab("home");setSelDay(null);setProgress({});try{localStorage.removeItem("gb_code");localStorage.removeItem("gb_pin")}catch(e){}},[]);
 
   // ── SALVA PROGRESSO — locale + Sheet ──
   const handleLog=useCallback(async(exercise,schedaId,weight)=>{
