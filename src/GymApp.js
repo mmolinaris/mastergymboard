@@ -258,27 +258,63 @@ function WorkoutDay({seduta,esercizi,s,onBack,onTimer,onVideo,progressData,onLog
     </div>);
 }
 
-function ProgressView({progressData,s,esercizi,schedaId}){
+function ProgressView({s,esercizi,schedaId,codiceCliente}){
   const [sel,setSel]=useState(null);
+  const [storicoSheet, setStoricoSheet]=useState({});
+  const [loading, setLoading]=useState(true);
+
+  useEffect(()=>{
+    if(!codiceCliente)return;
+    setLoading(true);
+    writeViaScript("getUltimiPesi",{codice_cliente:codiceCliente})
+      .then(res=>{
+        if(res?.data) setStoricoSheet(res.data);
+      })
+      .catch(()=>{})
+      .finally(()=>setLoading(false));
+  },[codiceCliente]);
+
   const activeEx=useMemo(()=>[...new Set(esercizi.filter(e=>e.scheda_id===schedaId&&!isCardio(e)).map(e=>e.esercizio))],[esercizi,schedaId]);
-  const todayLogs=useMemo(()=>{const t=new Date().toLocaleDateString("it-IT");const l=[];Object.entries(progressData).forEach(([k,es])=>{es.forEach(e=>{if(e.date===t)l.push({ex:k.split("__")[0],weight:e.weight})})});return l},[progressData]);
-  const selData=sel?(progressData[`${sel}__${schedaId}`]||[]):[];
+
   return(
     <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
-      <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:4}}>Progressi 📊</h1><p style={{color:s.sub,fontSize:14,marginBottom:24}}>I tuoi miglioramenti</p>
-      <div style={{background:`${s.primary}10`,borderRadius:16,padding:16,marginBottom:24,border:`1px solid ${s.primary}20`}}>
-        <div style={{fontSize:11,color:s.primary,fontWeight:700,letterSpacing:"1.5px",marginBottom:10}}>OGGI</div>
-        {todayLogs.length===0?<p style={{color:s.sub,fontSize:13,margin:0}}>Nessun peso registrato oggi 💪</p>:<div style={{display:"flex",flexDirection:"column",gap:6}}>{todayLogs.map((l,i)=><div key={i} style={{display:"flex",justifyContent:"space-between"}}><span style={{color:s.text,fontSize:14}}>{l.ex}</span><span style={{color:s.primary,fontWeight:700,fontSize:14}}>{l.weight} kg</span></div>)}</div>}
-      </div>
+      <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:4}}>Progressi 📊</h1>
+      <p style={{color:s.sub,fontSize:14,marginBottom:24}}>I tuoi miglioramenti</p>
+
       <h2 style={{color:s.text,fontSize:16,fontWeight:800,marginBottom:12}}>PER ESERCIZIO</h2>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>{activeEx.map(ex=><button key={ex} onClick={()=>setSel(sel===ex?null:ex)} style={{background:sel===ex?s.primary:s.card,border:`1px solid ${sel===ex?s.primary:s.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:sel===ex?"#FFF":s.sub,fontSize:12,fontWeight:600}}>{ex}</button>)}</div>
-      {sel&&<div style={{background:s.card,borderRadius:16,padding:16,border:`1px solid ${s.border}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:s.text,marginBottom:12}}>{sel}</div>
-        {selData.length===0?<p style={{color:s.sub,fontSize:13}}>Nessun dato.</p>:<>
-          <div style={{display:"flex",alignItems:"flex-end",gap:4,height:120,marginBottom:12}}>{selData.slice(-10).map((d,i)=>{const max=Math.max(...selData.slice(-10).map(x=>parseFloat(x.weight)||0));const h=max>0?((parseFloat(d.weight)||0)/max)*100:0;return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><span style={{fontSize:10,color:s.text,fontWeight:700}}>{d.weight}</span><div style={{width:"100%",height:`${h}%`,minHeight:4,background:s.primary,borderRadius:"4px 4px 0 0"}}/><span style={{fontSize:9,color:s.muted}}>{d.date.slice(0,5)}</span></div>})}</div>
-          {selData.length>=2&&(()=>{const diff=(parseFloat(selData.at(-1).weight)||0)-(parseFloat(selData[0].weight)||0);return<div style={{display:"flex",alignItems:"center",gap:6,color:diff>=0?"#22c55e":"#ef4444"}}><TrendingUp size={16}/><span style={{fontSize:13,fontWeight:700}}>{diff>=0?"+":""}{diff.toFixed(1)} kg dal primo log</span></div>})()}
-        </>}
-      </div>}
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+        {activeEx.map(ex=>(
+          <button key={ex} onClick={()=>setSel(sel===ex?null:ex)}
+            style={{background:sel===ex?s.primary:s.card,border:`1px solid ${sel===ex?s.primary:s.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:sel===ex?"#FFF":s.sub,fontSize:12,fontWeight:600}}>
+            {ex}
+          </button>
+        ))}
+      </div>
+
+      {sel&&(
+        <div style={{background:s.card,borderRadius:16,padding:16,border:`1px solid ${s.border}`}}>
+          <div style={{fontSize:15,fontWeight:700,color:s.text,marginBottom:12}}>{sel}</div>
+          {loading ? (
+            <p style={{color:s.sub,fontSize:13}}>Caricamento...</p>
+          ) : storicoSheet[sel] ? (
+            <div style={{display:"flex",alignItems:"center",gap:10,background:`${s.primary}10`,borderRadius:10,padding:"12px 14px"}}>
+              <div style={{fontSize:28,fontWeight:900,color:s.primary}}>{storicoSheet[sel].peso_kg} kg</div>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:s.text}}>Ultimo peso registrato</div>
+                <div style={{fontSize:11,color:s.sub,marginTop:2}}>{storicoSheet[sel].data}</div>
+              </div>
+            </div>
+          ) : (
+            <p style={{color:s.sub,fontSize:13}}>Nessun dato ancora. Salva il tuo peso durante l'allenamento!</p>
+          )}
+        </div>
+      )}
+
+      {!sel&&!loading&&(
+        <div style={{textAlign:"center",padding:"32px 0",color:s.sub}}>
+          <p style={{fontSize:13}}>Seleziona un esercizio per vedere il tuo ultimo peso 💪</p>
+        </div>
+      )}
     </div>);
 }
 
@@ -455,7 +491,7 @@ export default function GymApp(){
         {selDay?<WorkoutDay seduta={selDay} esercizi={dayExs} s={s} onBack={()=>setSelDay(null)} onTimer={setTimer} onVideo={setVideo} progressData={progress} onLog={handleLog} ultimiPesi={ultimiPesi}/>
         :tab==="home"&&scheda?<Dashboard cliente={cliente} scheda={scheda} esercizi={data.esercizi} s={s} onSelectDay={setSelDay} onSync={load} lastSync={lastSync}/>
         :tab==="home"&&!scheda?<div style={{padding:"40px 24px",textAlign:"center"}}><AlertCircle size={40} color="#E53935" style={{margin:"0 auto 16px"}}/><h2 style={{color:"#1A1A1A",fontSize:18,fontWeight:800,marginBottom:8}}>Scheda non trovata</h2><p style={{color:"#666",fontSize:14}}>Contatta il tuo trainer.</p></div>
-        :tab==="progress"?<ProgressView progressData={progress} s={s} esercizi={data.esercizi} schedaId={cliente?.scheda_attiva}/>
+        :tab==="progress"?<ProgressView s={s} esercizi={data.esercizi} schedaId={cliente?.scheda_attiva} codiceCliente={cliente?.codice}/>
         :tab==="history"?<HistoryView cliente={cliente} schede={data.schede} esercizi={data.esercizi} s={s}/>
         :tab==="profile"?<ProfileView cliente={cliente} config={data.config} s={s} onLogout={handleLogout} servizi={data.servizi||[]}/>
         :null}
