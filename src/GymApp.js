@@ -266,11 +266,120 @@ function ProgressView({s,esercizi,schedaId,codiceCliente}){
   useEffect(()=>{
     if(!codiceCliente)return;
     setLoading(true);
-    writeViaScript("getProgressiCliente",{codice_cliente:codiceCliente})
-      .then(res=>{ if(res?.data) setStorico(res.data); })
+    fetchSheet("progressi")
+      .then(rows=>{
+        const miei=rows.filter(r=>String(r.codice_cliente).trim()===String(codiceCliente).trim());
+        const grouped={};
+        miei.forEach(r=>{
+          const ex=String(r.esercizio||"").trim();
+          const peso=String(r.peso_kg||"").trim();
+          const dat=String(r.data||"").trim();
+          if(!ex||!peso)return;
+          if(!grouped[ex])grouped[ex]=[];
+          grouped[ex].push({data:dat,peso_kg:peso});
+        });
+        Object.keys(grouped).forEach(ex=>{
+          grouped[ex].sort((a,b)=>{
+            const da=a.data.split("/").reverse().join("-");
+            const db=b.data.split("/").reverse().join("-");
+            return da.localeCompare(db);
+          });
+        });
+        setStorico(grouped);
+      })
       .catch(()=>{})
       .finally(()=>setLoading(false));
   },[codiceCliente]);
+
+  const activeEx=useMemo(()=>[...new Set(esercizi.filter(e=>e.scheda_id===schedaId&&!isCardio(e)).map(e=>e.esercizio))],[esercizi,schedaId]);
+
+  const getRecord=(ex)=>{
+    const dati=storico[ex]||[];
+    if(!dati.length)return null;
+    return dati.reduce((max,d)=>parseFloat(d.peso_kg)>parseFloat(max.peso_kg)?d:max,dati[0]);
+  };
+
+  return(
+    <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
+      <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:4}}>Progressi 📊</h1>
+      <p style={{color:s.sub,fontSize:14,marginBottom:24}}>I tuoi miglioramenti</p>
+
+      {loading&&<p style={{color:s.sub,fontSize:13,textAlign:"center",padding:"32px 0"}}>Caricamento...</p>}
+
+      {!loading&&(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {activeEx.map(ex=>{
+            const record=getRecord(ex);
+            const dati=storico[ex]||[];
+            const isOpen=sel===ex;
+            return(
+              <div key={ex} style={{background:s.card,borderRadius:16,overflow:"hidden",border:`1px solid ${isOpen?s.primary:s.border}`}}>
+                <button onClick={()=>setSel(isOpen?null:ex)} style={{width:"100%",background:"none",border:"none",cursor:"pointer",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:s.text}}>{ex}</div>
+                    {record
+                      ?<div style={{fontSize:12,color:s.primary,fontWeight:700,marginTop:2}}>🏆 Record: {record.peso_kg} kg · {record.data.slice(0,5)}</div>
+                      :<div style={{fontSize:12,color:s.muted,marginTop:2}}>Nessun dato ancora</div>
+                    }
+                  </div>
+                  <ChevronDown size={18} color={s.muted} style={{transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}/>
+                </button>
+
+                {isOpen&&dati.length>0&&(()=>{
+                  const pts=dati.slice(-12);
+                  const vals=pts.map(d=>parseFloat(d.peso_kg)||0);
+                  const minV=Math.min(...vals);
+                  const maxV=Math.max(...vals);
+                  const range=maxV-minV||1;
+                  const W=100,H=70,pad=10;
+                  const xStep=pts.length>1?(W-pad*2)/(pts.length-1):0;
+                  const yPos=v=>H-pad-((v-minV)/range)*(H-pad*2);
+                  const points=pts.map((d,i)=>({x:pad+i*xStep,y:yPos(parseFloat(d.peso_kg)||0),val:d.peso_kg,date:d.data.slice(0,5)}));
+                  const pathD=points.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ");
+                  const areaD=`${pathD} L ${points.at(-1).x} ${H-pad} L ${points[0].x} ${H-pad} Z`;
+                  const diff=(parseFloat(pts.at(-1).peso_kg)||0)-(parseFloat(pts[0].peso_kg)||0);
+                  const gradId=`g${ex.replace(/[^a-zA-Z0-9]/g,"")}`;
+                  return(
+                    <div style={{padding:"0 16px 16px"}}>
+                      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:140,overflow:"visible"}}>
+                        <defs>
+                          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={s.primary} stopOpacity="0.2"/>
+                            <stop offset="100%" stopColor={s.primary} stopOpacity="0"/>
+                          </linearGradient>
+                        </defs>
+                        <path d={areaD} fill={`url(#${gradId})`}/>
+                        <path d={pathD} fill="none" stroke={s.primary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        {points.map((p,i)=>(
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.y} r="2.5" fill="#fff" stroke={s.primary} strokeWidth="1.5"/>
+                            <text x={p.x} y={p.y-5} textAnchor="middle" fontSize="4.5" fontWeight="700" fill={s.text}>{p.val}kg</text>
+                            <text x={p.x} y={H-2} textAnchor="middle" fontSize="4" fill={s.muted}>{p.date}</text>
+                          </g>
+                        ))}
+                      </svg>
+                      {pts.length>=2&&(
+                        <div style={{display:"flex",alignItems:"center",gap:6,color:diff>=0?"#22c55e":"#ef4444",fontSize:13,fontWeight:700}}>
+                          <TrendingUp size={14}/>
+                          {diff>=0?"+":""}{diff.toFixed(1)} kg dal primo log
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {isOpen&&dati.length===0&&(
+                  <div style={{padding:"0 16px 16px",fontSize:13,color:s.sub}}>
+                    Nessun dato ancora. Salva il tuo peso durante l'allenamento! 💪
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>);
+}
 
   const activeEx=useMemo(()=>[...new Set(esercizi.filter(e=>e.scheda_id===schedaId&&!isCardio(e)).map(e=>e.esercizio))],[esercizi,schedaId]);
 
@@ -493,8 +602,22 @@ export default function GymApp(){
   // ── CARICA ULTIMI PESI DOPO LOGIN ──
   useEffect(() => {
     if (!loggedIn || !cliente) return;
-    writeViaScript("getUltimiPesi", { codice_cliente: cliente.codice })
-      .then(res => { if (res?.data) setUltimiPesi(res.data); })
+    fetchSheet("progressi")
+      .then(rows => {
+        const miei = rows.filter(r => String(r.codice_cliente).trim() === String(cliente.codice).trim());
+        const ultimi = {};
+        miei.forEach(r => {
+          const ex = String(r.esercizio || "").trim();
+          const peso = String(r.peso_kg || "").trim();
+          const dat = String(r.data || "").trim();
+          if (!ex || !peso) return;
+          if (!ultimi[ex]) { ultimi[ex] = { peso_kg: peso, data: dat }; return; }
+          const da = dat.split("/").reverse().join("-");
+          const db = ultimi[ex].data.split("/").reverse().join("-");
+          if (da >= db) ultimi[ex] = { peso_kg: peso, data: dat };
+        });
+        setUltimiPesi(ultimi);
+      })
       .catch(() => {});
   }, [loggedIn, cliente]);
 
