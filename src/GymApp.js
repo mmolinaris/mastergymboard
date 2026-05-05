@@ -260,59 +260,104 @@ function WorkoutDay({seduta,esercizi,s,onBack,onTimer,onVideo,progressData,onLog
 
 function ProgressView({s,esercizi,schedaId,codiceCliente}){
   const [sel,setSel]=useState(null);
-  const [storicoSheet, setStoricoSheet]=useState({});
-  const [loading, setLoading]=useState(true);
+  const [storico,setStorico]=useState({});
+  const [loading,setLoading]=useState(true);
 
   useEffect(()=>{
     if(!codiceCliente)return;
     setLoading(true);
-    writeViaScript("getUltimiPesi",{codice_cliente:codiceCliente})
-      .then(res=>{
-        if(res?.data) setStoricoSheet(res.data);
-      })
+    writeViaScript("getProgressiCliente",{codice_cliente:codiceCliente})
+      .then(res=>{ if(res?.data) setStorico(res.data); })
       .catch(()=>{})
       .finally(()=>setLoading(false));
   },[codiceCliente]);
 
   const activeEx=useMemo(()=>[...new Set(esercizi.filter(e=>e.scheda_id===schedaId&&!isCardio(e)).map(e=>e.esercizio))],[esercizi,schedaId]);
 
+  const getRecord=(ex)=>{
+    const dati=storico[ex]||[];
+    if(!dati.length)return null;
+    return dati.reduce((max,d)=>parseFloat(d.peso_kg)>parseFloat(max.peso_kg)?d:max,dati[0]);
+  };
+
   return(
     <div style={{padding:"20px 16px 100px",minHeight:"100vh",background:s.bg}}>
       <h1 style={{color:s.text,fontSize:24,fontWeight:900,marginBottom:4}}>Progressi 📊</h1>
       <p style={{color:s.sub,fontSize:14,marginBottom:24}}>I tuoi miglioramenti</p>
 
-      <h2 style={{color:s.text,fontSize:16,fontWeight:800,marginBottom:12}}>PER ESERCIZIO</h2>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-        {activeEx.map(ex=>(
-          <button key={ex} onClick={()=>setSel(sel===ex?null:ex)}
-            style={{background:sel===ex?s.primary:s.card,border:`1px solid ${sel===ex?s.primary:s.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",color:sel===ex?"#FFF":s.sub,fontSize:12,fontWeight:600}}>
-            {ex}
-          </button>
-        ))}
-      </div>
+      {loading&&<p style={{color:s.sub,fontSize:13,textAlign:"center",padding:"32px 0"}}>Caricamento...</p>}
 
-      {sel&&(
-        <div style={{background:s.card,borderRadius:16,padding:16,border:`1px solid ${s.border}`}}>
-          <div style={{fontSize:15,fontWeight:700,color:s.text,marginBottom:12}}>{sel}</div>
-          {loading ? (
-            <p style={{color:s.sub,fontSize:13}}>Caricamento...</p>
-          ) : storicoSheet[sel] ? (
-            <div style={{display:"flex",alignItems:"center",gap:10,background:`${s.primary}10`,borderRadius:10,padding:"12px 14px"}}>
-              <div style={{fontSize:28,fontWeight:900,color:s.primary}}>{storicoSheet[sel].peso_kg} kg</div>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:s.text}}>Ultimo peso registrato</div>
-                <div style={{fontSize:11,color:s.sub,marginTop:2}}>{storicoSheet[sel].data}</div>
+      {!loading&&(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {activeEx.map(ex=>{
+            const record=getRecord(ex);
+            const dati=storico[ex]||[];
+            const isOpen=sel===ex;
+            return(
+              <div key={ex} style={{background:s.card,borderRadius:16,overflow:"hidden",border:`1px solid ${isOpen?s.primary:s.border}`}}>
+                {/* RIGA ESERCIZIO */}
+                <button onClick={()=>setSel(isOpen?null:ex)} style={{width:"100%",background:"none",border:"none",cursor:"pointer",padding:"14px 16px",display:"flex",alignItems:"center",gap:12,textAlign:"left"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:s.text}}>{ex}</div>
+                    {record
+                      ? <div style={{fontSize:12,color:s.primary,fontWeight:700,marginTop:2}}>🏆 Record: {record.peso_kg} kg · {record.data.slice(0,5)}</div>
+                      : <div style={{fontSize:12,color:s.muted,marginTop:2}}>Nessun dato ancora</div>
+                    }
+                  </div>
+                  <ChevronDown size={18} color={s.muted} style={{transform:isOpen?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}/>
+                </button>
+
+                {/* GRAFICO A LINEA */}
+                {isOpen&&dati.length>0&&(()=>{
+                  const pts=dati.slice(-12);
+                  const vals=pts.map(d=>parseFloat(d.peso_kg)||0);
+                  const minV=Math.min(...vals);
+                  const maxV=Math.max(...vals);
+                  const range=maxV-minV||1;
+                  const W=100,H=70,pad=10;
+                  const xStep=pts.length>1?(W-pad*2)/(pts.length-1):0;
+                  const yPos=v=>H-pad-((v-minV)/range)*(H-pad*2);
+                  const points=pts.map((d,i)=>({x:pad+i*xStep,y:yPos(parseFloat(d.peso_kg)||0),val:d.peso_kg,date:d.data.slice(0,5)}));
+                  const pathD=points.map((p,i)=>`${i===0?"M":"L"} ${p.x} ${p.y}`).join(" ");
+                  const areaD=`${pathD} L ${points.at(-1).x} ${H-pad} L ${points[0].x} ${H-pad} Z`;
+                  const diff=(parseFloat(pts.at(-1).peso_kg)||0)-(parseFloat(pts[0].peso_kg)||0);
+                  return(
+                    <div style={{padding:"0 16px 16px"}}>
+                      <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:140,overflow:"visible"}}>
+                        <defs>
+                          <linearGradient id={`g${ex.replace(/\s/g,"")}`} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={s.primary} stopOpacity="0.2"/>
+                            <stop offset="100%" stopColor={s.primary} stopOpacity="0"/>
+                          </linearGradient>
+                        </defs>
+                        <path d={areaD} fill={`url(#g${ex.replace(/\s/g,"")})`}/>
+                        <path d={pathD} fill="none" stroke={s.primary} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        {points.map((p,i)=>(
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.y} r="2.5" fill="#fff" stroke={s.primary} strokeWidth="1.5"/>
+                            <text x={p.x} y={p.y-5} textAnchor="middle" fontSize="4.5" fontWeight="700" fill={s.text}>{p.val}kg</text>
+                            <text x={p.x} y={H-2} textAnchor="middle" fontSize="4" fill={s.muted}>{p.date}</text>
+                          </g>
+                        ))}
+                      </svg>
+                      {pts.length>=2&&(
+                        <div style={{display:"flex",alignItems:"center",gap:6,color:diff>=0?"#22c55e":"#ef4444",fontSize:13,fontWeight:700}}>
+                          <TrendingUp size={14}/>
+                          {diff>=0?"+":""}{diff.toFixed(1)} kg dal primo log
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {isOpen&&dati.length===0&&(
+                  <div style={{padding:"0 16px 16px",fontSize:13,color:s.sub}}>
+                    Nessun dato ancora. Salva il tuo peso durante l'allenamento! 💪
+                  </div>
+                )}
               </div>
-            </div>
-          ) : (
-            <p style={{color:s.sub,fontSize:13}}>Nessun dato ancora. Salva il tuo peso durante l'allenamento!</p>
-          )}
-        </div>
-      )}
-
-      {!sel&&!loading&&(
-        <div style={{textAlign:"center",padding:"32px 0",color:s.sub}}>
-          <p style={{fontSize:13}}>Seleziona un esercizio per vedere il tuo ultimo peso 💪</p>
+            );
+          })}
         </div>
       )}
     </div>);
