@@ -22,7 +22,11 @@ async function fetchSheet(tab) {
 async function fetchAllData() {
   const [cf, cl, sc, ex] = await Promise.all(["config","clienti","schede","esercizi"].map(fetchSheet));
   let servizi = [];
+  let libreria = [];
   try { servizi = await fetchSheet("servizi"); } catch(e) {}
+  try { libreria = await fetchSheet("libreria_esercizi"); } catch(e) {}
+  const videoMap = {};
+  libreria.forEach(l => { if (l.esercizio && l.video_url) videoMap[l.esercizio.trim()] = l.video_url.trim(); });
   const esercizi = ex.map(e => ({
     ...e,
     seduta: e.seduta || e.giorno || "",
@@ -34,7 +38,7 @@ async function fetchAllData() {
     peso_suggerito: e.peso_suggerito || "",
     note: e.note || "",
     tecnica: e.tecnica || "",
-    video_url: e.video_url || "",
+    video_url: e.video_url || videoMap[e.esercizio?.trim()] || "",
     ordine: e.ordine || "0",
   }));
   return {
