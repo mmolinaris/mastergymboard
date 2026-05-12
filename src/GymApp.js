@@ -459,8 +459,9 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
         {corsi.map((c,i)=>(
           <div key={i} style={{paddingBottom:12,marginBottom:12,borderBottom:i<corsi.length-1?`1px solid ${s.border}`:"none"}}>
             <div style={{fontSize:15,fontWeight:700,color:s.text}}>{c.nome}</div>
-            {c.descrizione&&<div style={{fontSize:13,color:s.sub,marginTop:3}}>{c.descrizione}</div>}
-            {c.contatto&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>{c.contatto}</div>}
+            {c.descrizione&&<div style={{fontSize:13,color:s.sub,marginTop:3}}>🕐 {c.descrizione}</div>}
+            {c.contatto&&c.contatto.toLowerCase()!=="definire"&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>📞 {c.contatto}</div>}
+            {c.instagram&&<div style={{fontSize:12,color:"#C2185B",marginTop:3,fontWeight:600}}>📷 {c.instagram}</div>}
           </div>
         ))}
       </div>}
@@ -470,7 +471,8 @@ function ProfileView({cliente,config,s,onLogout,servizi}){
           <div key={i} style={{paddingBottom:12,marginBottom:12,borderBottom:i<professionisti.length-1?`1px solid ${s.border}`:"none"}}>
             <div style={{fontSize:15,fontWeight:700,color:s.text}}>{p.nome}</div>
             {p.descrizione&&<div style={{fontSize:13,color:s.sub,marginTop:3}}>{p.descrizione}</div>}
-            {p.contatto&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>{p.contatto}</div>}
+            {p.contatto&&p.contatto.toLowerCase()!=="definire"&&<div style={{fontSize:12,color:s.primary,marginTop:4,fontWeight:600}}>📞 {p.contatto}</div>}
+            {p.instagram&&<div style={{fontSize:12,color:"#C2185B",marginTop:3,fontWeight:600}}>📷 {p.instagram}</div>}
           </div>
         ))}
       </div>}
